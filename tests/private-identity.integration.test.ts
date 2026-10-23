@@ -42,6 +42,9 @@ it('closure releases phone and username without resurrecting the old wallet', as
     expect((await call(subject, 'close')).statusCode).toBe(409);
     expect((await db.query<{ phone: string }>('select phone from users where id = $1', [original.customerId])).rows[0]?.phone).toBe(phone);
     await db.query("update credit_accounts set total_balance = 0 where id = $1", [original.accountId]);
+    await db.query("insert into platform_admins (user_id) values ($1)", [original.customerId]);
+    expect((await call(subject, 'close')).statusCode).toBe(409);
+    await db.query("update platform_admins set status = 'disabled' where user_id = $1", [original.customerId]);
     expect((await call(subject, 'close')).statusCode).toBe(200);
     expect((await call(subject, 'close')).statusCode).toBe(200);
     expect((await call(subject, 'provision')).statusCode).toBe(404);

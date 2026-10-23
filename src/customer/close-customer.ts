@@ -34,6 +34,10 @@ export async function closeCustomer(db: Database, issuer: string, subject: strin
     // cannot silently abandon enterprise ownership, referrals, or unpaid orders.
     const obligations = await client.query<{ count: number }>(`select (
       (select count(*) from payment_orders where user_id = $1 and status = 'pending') +
+      (select count(*) from billing_tasks where user_id = $1 and status in ('estimated', 'frozen')) +
+      (select count(*) from billing_locks l join billing_tasks t on t.id = l.billing_task_id where t.user_id = $1 and l.status = 'active') +
+      (select count(*) from platform_admins where user_id = $1 and status = 'active') +
+      (select count(*) from agent_profiles where user_id = $1 and status in ('pending', 'approved')) +
       (select count(*) from tenant_members where user_id = $1 and status <> 'disabled') +
       (select count(*) from agent_relations where (agent_user_id = $1 or referred_user_id = $1) and status = 'active') +
       (select count(*) from agent_commissions where (agent_user_id = $1 or referred_user_id = $1) and status = 'pending')
