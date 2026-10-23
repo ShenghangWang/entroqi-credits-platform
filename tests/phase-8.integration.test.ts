@@ -746,3 +746,29 @@ describe("phase 8 testing matrix", () => {
     await expect(transactionTypes("user_id = " + agent.id)).resolves.toEqual(["commission_grant"]);
   });
 });
+
+describe("actual usage settlement", () => {
+  it.each(["5.0000", "0.0000"])("charges %s and releases unused reservation exactly once", async actualPoints => {
+    const user = await createUser("actual-usage");
+    const account = await createPersonalAccount(user.id, "50.0000");
+    await createApplicationFunction("12.0000");
+    const task = await estimate({ userId: user.id, key: "actual-estimate", bizId: "actual-job" });
+    await freeze(user.id, task.billingTaskId, "actual-freeze");
+    const input = { userId: user.id, billingTaskId: task.billingTaskId, actualPoints, idempotencyKey: "actual-settle", requestHash: requestHash({ actualPoints }) };
+    const billing = new BillingService(db);
+    await expect(billing.settle(input)).resolves.toMatchObject({ status: "settled", settledPoints: actualPoints });
+    await expect(billing.settle(input)).resolves.toMatchObject({ idempotentReplay: true });
+    const total = actualPoints === "0.0000" ? "50.0000" : "45.0000";
+    await expect(accountBalances(account.id)).resolves.toEqual({ totalBalance: total, lockedBalance: "0.0000", availableBalance: total });
+    await expect(transactionTypes()).resolves.toEqual(["estimate", "freeze", "settle", "refund"]);
+  });
+  it("rejects an actual charge above the reservation without consuming funds", async () => {
+    const user = await createUser("over-reservation");
+    const account = await createPersonalAccount(user.id, "50.0000");
+    await createApplicationFunction("12.0000");
+    const task = await estimate({ userId: user.id, key: "over-estimate", bizId: "over-job" });
+    await freeze(user.id, task.billingTaskId, "over-freeze");
+    await expect(new BillingService(db).settle({ userId: user.id, billingTaskId: task.billingTaskId, actualPoints: "12.0001", idempotencyKey: "over-settle", requestHash: "over-hash" })).rejects.toMatchObject({ code: "bad_request" });
+    await expect(accountBalances(account.id)).resolves.toEqual({ totalBalance: "50.0000", lockedBalance: "12.0000", availableBalance: "38.0000" });
+  });
+});

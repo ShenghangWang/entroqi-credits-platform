@@ -170,12 +170,12 @@ export function registerBillingRoutes(
       })
   );
 
-  app.post<{ Body: TaskMutationBody }>(
+  app.post<{ Body: TaskMutationBody & { actualPoints?: string } }>(
     "/billing/settle",
     {
       schema: {
         tags: ["billing"],
-        body: taskMutationBodySchema,
+        body: { ...taskMutationBodySchema, properties: { ...taskMutationBodySchema.properties, actualPoints: { type: "string", pattern: "^\\d{1,14}(?:\\.\\d{1,4})?$" } } },
         response: {
           200: billingTaskResponseSchema
         }

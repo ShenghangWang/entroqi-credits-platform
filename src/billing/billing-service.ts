@@ -10,7 +10,10 @@ import {
   NotFoundError,
   fromScaledPoints,
   negatePoints,
-  toScaledPoints
+  toScaledPoints,
+  assertCreditAmount,
+  comparePoints,
+  subtractPoints
 } from "../domain/index.js";
 
 type AccountScope = "personal" | "tenant";
@@ -285,7 +288,7 @@ export class BillingService {
     });
   }
 
-  async settle(input: BillingTaskMutationInput): Promise<JsonObject> {
+  async settle(input: BillingTaskMutationInput & { actualPoints?: string }): Promise<JsonObject> {
     return this.executeIdempotent(input, async (client) => {
       const task = await this.getTaskForUpdate(client, input.billingTaskId, input.userId);
       if (task.status !== "frozen") {
@@ -294,17 +297,19 @@ export class BillingService {
 
       const lock = await this.getActiveLockForUpdate(client, Number(task.id));
       const account = await this.balanceService.lockAccountForUpdate(Number(task.account_id), client);
-      const updatedAccount = await this.balanceService.settleFrozenCredits({
-        account,
-        points: lock.points,
-        client
-      });
+      const actualPoints = input.actualPoints ?? lock.points;
+      assertCreditAmount(actualPoints, true);
+      if (comparePoints(actualPoints, lock.points) > 0) throw new BadRequestError("Actual usage exceeds the reserved credits");
+      const unused = subtractPoints(lock.points, actualPoints);
+      let updatedAccount = account;
+      if (comparePoints(actualPoints, "0") > 0) updatedAccount = await this.balanceService.settleFrozenCredits({ account, points: actualPoints, client });
+      if (comparePoints(unused, "0") > 0) updatedAccount = await this.balanceService.releaseFrozenCredits({ account: updatedAccount, points: unused, client });
 
       await this.releaseBillingLock(client, Number(lock.id), "settle");
       const updatedTask = await this.updateTaskStatus(client, Number(task.id), {
         status: "settled",
         frozenPoints: task.frozen_points,
-        settledPoints: lock.points
+        settledPoints: fromScaledPoints(toScaledPoints(actualPoints))
       });
       await new CreditLedgerService(client).createTransaction({
         tenantId: optionalNumber(task.tenant_id),
@@ -314,7 +319,7 @@ export class BillingService {
         applicationId: Number(task.application_id),
         functionId: Number(task.function_id),
         txnType: "settle",
-        points: negatePoints(lock.points),
+        points: negatePoints(actualPoints),
         balanceBefore: account.totalBalance,
         balanceAfter: updatedAccount.totalBalance,
         bizType: task.biz_type,
@@ -322,6 +327,12 @@ export class BillingService {
         remark: "credits settled"
       });
 
+      if (comparePoints(unused, "0") > 0) await new CreditLedgerService(client).createTransaction({
+        tenantId: optionalNumber(task.tenant_id), userId: Number(task.user_id), accountId: Number(task.account_id),
+        billingTaskId: Number(task.id), applicationId: Number(task.application_id), functionId: Number(task.function_id),
+        txnType: "refund", points: unused, balanceBefore: updatedAccount.totalBalance, balanceAfter: updatedAccount.totalBalance,
+        bizType: task.biz_type, bizId: task.biz_id, remark: "unused reservation released; not a cash refund"
+      });
       return mapTask(updatedTask);
     });
   }
