@@ -57,3 +57,12 @@ it('closure releases phone and username without resurrecting the old wallet', as
     expect((await call(neverProvisioned, 'provision')).statusCode).toBe(404);
   } finally { await app.close(); await db.close(); }
 });
+
+it('database prevents a second wallet for the same owner and currency', async () => {
+  const db = createDatabase(loadEnv());
+  try {
+    const user = await db.query("insert into users (status) values ('active')");
+    await db.query("insert into credit_accounts (user_id, account_scope) values ($1, 'personal')", [user.insertId]);
+    await expect(db.query("insert into credit_accounts (user_id, account_scope) values ($1, 'personal')", [user.insertId])).rejects.toThrow();
+  } finally { await db.close(); }
+});

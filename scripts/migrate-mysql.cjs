@@ -387,6 +387,22 @@ MIGRATIONS.push({ name: "000009_entroqi_identity", statements: [
   )`
 ] });
 
+// MySQL DDL commits implicitly. This migration checks existing data first and
+// resumes by checking each index rather than assuming rollback undoes CREATE INDEX.
+MIGRATIONS.push({ name: "000010_wallet_owner_currency_unique", statements: [], walletUniqueness: true });
+
+async function ensureWalletUniqueness(connection) {
+  for (const owner of ["user_id", "tenant_id"]) {
+    const [duplicates] = await connection.query(`SELECT ${owner} AS owner_id, currency, COUNT(*) AS count
+      FROM credit_accounts WHERE ${owner} IS NOT NULL GROUP BY ${owner}, currency HAVING COUNT(*) > 1 LIMIT 1`);
+    if (duplicates.length) throw new Error(`Duplicate wallets for ${owner}; manual financial reconciliation required before migration`);
+  }
+  for (const [name, owner] of [["credit_accounts_user_currency_unique", "user_id"], ["credit_accounts_tenant_currency_unique", "tenant_id"]]) {
+    const [indexes] = await connection.execute("SELECT index_name FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'credit_accounts' AND index_name = ?", [name]);
+    if (!indexes.length) await connection.execute(`CREATE UNIQUE INDEX ${name} ON credit_accounts (${owner}, currency)`);
+  }
+}
+
 const DOWN_TABLES = [
   "customer_external_identities",
   "agent_profiles",
@@ -444,6 +460,7 @@ async function up(connection) {
       continue;
     }
 
+    if (migration.walletUniqueness) await ensureWalletUniqueness(connection);
     await connection.beginTransaction();
     try {
       for (const statement of migration.statements) {
@@ -492,5 +509,6 @@ if (require.main === module) {
 }
 
 module.exports = {
-  MIGRATION_NAMES
+  MIGRATION_NAMES,
+  ensureWalletUniqueness
 };

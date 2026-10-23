@@ -52,6 +52,7 @@ export class AccountResolver {
           and user_id = $1
           and tenant_id is null
           and status = 'active'
+          and currency = 'credits'
         order by id
         limit 1
       `,
@@ -92,6 +93,7 @@ export class AccountResolver {
           and tenant_id = $1
           and user_id is null
           and status = 'active'
+          and currency = 'credits'
         order by id
         limit 1
       `,

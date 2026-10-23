@@ -36,7 +36,8 @@ jobs:
       - run: npm ci --ignore-scripts
       - run: npm run typecheck && npm run lint && npm test && npm run build
       - run: npm run db:migrate
-      - run: npm run test:integration -- tests/private-identity.integration.test.ts
+      - run: npm run db:migrate
+      - run: npm run test:integration
       - run: docker compose -f deploy/compose.yml config --quiet
         env:
           MYSQL_ROOT_PASSWORD: root_test_only
