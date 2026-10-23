@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("mysql2/promise", () => ({
   default: {
     createPool: vi.fn(() => ({
+      on: vi.fn(),
       execute: mocks.execute,
       getConnection: mocks.getConnection,
       end: mocks.end
