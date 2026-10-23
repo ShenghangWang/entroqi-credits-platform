@@ -7,7 +7,7 @@ const db = { query: () => Promise.reject(new Error('Unexpected DB access')), wit
 describe('private service boundary', () => {
   it('requires explicit strong unique credentials and consistent issuer policy', () => {
     expect(() => parseCredentials('[]')).toThrow();
-    expect(() => parseCredentials('{\"token\":\"' + token)).toThrow('Invalid service credentials JSON');
+    expect(() => parseCredentials('{"token":"' + token)).toThrow(/^Invalid service credentials JSON$/);
     expect(() => parseCredentials(JSON.stringify([{ ...credential, token: 'short' }]))).toThrow();
     expect(() => parseCredentials(JSON.stringify([credential, credential]))).toThrow();
     expect(() => parseCredentials(JSON.stringify([credential, { ...credential, token: 'b'.repeat(43), onboarding: 'managed' }]))).toThrow();
