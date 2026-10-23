@@ -1,0 +1,9 @@
+# Paid-offer margin policy
+
+Date: 24 October 2026. `src/pricing/price-floor.ts` is the reusable cost-review rule for a future versioned catalog/quote service. It requires current cost evidence, exact CNY cents, a positive labor allocation, revenue-based fee/tax/refund reserves, a chosen contribution target (60% default, 50% minimum), and a final cent-rounded check. No browser role/price is authority. Tests reject expired evidence, omitted labor, inadequate margin and below-floor retail prices, including the previously suggested high-quota storage offer under the new labor assumptions.
+
+This helper is not yet wired to a paid order or exposed API. Paid financial APIs remain unmounted; the current car recharge catalog is legacy and has no imported commercial offers. Integrate this single policy into the trusted versioned quote/order path before enabling any Entroqi paid service. Do not duplicate the formula in product apps or frontend checkout. Reserve worst-case funded cost before supplier dispatch; record immutable cost/policy/price evidence, then settle actual usage. A paid catalog may not bypass the check through discounts. Unknown cost evidence pauses paid dispatch.
+
+Support/maintenance must use actual allocated loaded labor and realistic purchased volume. A positive order contribution does not guarantee overall company profit: total contribution must cover unallocated fixed payroll/development/acquisition/admin costs. Taxes/processor rates are supplied reviewed reserves, not hardcoded legal or merchant assumptions. Free local and genuinely free AI access remain free; they are separately capped acquisition expense.
+
+[Product research and policy](https://github.com/ShenghangWang/ai-native-simulation-platform/blob/main/docs/research/LLM_Access_and_Profit_Policy_2026-10-24.md) and [company access decision](https://github.com/ShenghangWang/ai-native-simulation-platform/blob/main/docs/decisions/0018-company-access-ai-and-release.md).
