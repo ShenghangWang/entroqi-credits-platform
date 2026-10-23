@@ -14,3 +14,10 @@ Owner authorization: 24 October 2026. Dependencies: private identity adapter/ext
 ## Acceptance and evidence
 
 Run full unit/type/lint/build and isolated MySQL suites (serial when suites reset tables), fresh/repeated migrations and Docker packaging. Keep full review findings with fixed/open status. No bug-free-production claim, no merchant setup or paid traffic, no destructive cleanup of live data. Original car-sales baseline tag remains unchanged. A product-layer phone reservation must be fixed at that layer or explicitly identified as an unmigrated legacy application path; a shared SQL fix alone cannot erase a separate product database reservation.
+
+
+## Verified implementation checkpoint — 24 October
+
+See [review and CI evidence](../verification/billing-review-2026-10-24.md). Guarded closure/tombstones/contact release, positive bounded balance mutations, wallet owner/currency uniqueness with duplicate preflight, exact money and callback channel binding, partial/zero actual settlement, unused reservation release and operation-scoped retry keys are implemented and tested. All four MySQL integration suites now run serially in CI; migrations are repeated.
+
+Still open: simulation auth deletion/session/publication handling; independent business-job uniqueness; authenticated provider query proof/key rotation; durable provider dispatch and bounded I/O; true cash refunds/reconciliation; product catalog and entitlements; live deployment/restore/payment evidence. Legacy car phone-reuse code is separately tested in [PR #1](https://github.com/ShenghangWang/AI-Car-Salesperson/pull/1), not merged or deployed. Do not mark B03/B04/B05 complete or enable paid routes on the strength of this checkpoint.
