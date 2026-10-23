@@ -1,3 +1,4 @@
+import { providerAmountCents } from "./money.js";
 import { paymentField } from "./payment-field.js";
 import {
   createDecipheriv,
@@ -38,7 +39,7 @@ function pem(value: string, label: "PRIVATE KEY" | "PUBLIC KEY"): string {
 }
 
 function amountCents(amount: string): number {
-  return Math.round(Number(amount) * 100);
+  return providerAmountCents(amount);
 }
 
 function alipaySignContent(input: Record<string, string>): string {
@@ -265,7 +266,7 @@ export class WechatPayProvider {
     const nonce = headers["wechatpay-nonce"] ?? "";
     const signature = headers["wechatpay-signature"] ?? "";
     const serial = headers["wechatpay-serial"] ?? "";
-    if (!timestamp || !nonce || !signature || !serial) return false;
+    if (!/^\d{1,12}$/.test(timestamp) || !nonce || !signature || !serial) return false;
     if (Math.abs(Date.now() / 1000 - Number(timestamp)) > 300) return false;
     const message = `${timestamp}\n${nonce}\n${rawBody}\n`;
     return verifyRsaSha256(

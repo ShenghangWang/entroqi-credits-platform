@@ -1,3 +1,4 @@
+import { moneyMinorUnits, providerAmountCents } from "./money.js";
 import { paymentField } from "./payment-field.js";
 import { randomUUID } from "node:crypto";
 import QRCode from "qrcode";
@@ -381,7 +382,7 @@ export class PaymentService {
       throw new BadRequestError("Alipay seller_id mismatch");
     }
     const order = await this.getOrderByOrderNo(params.out_trade_no ?? "");
-    if (Number(params.total_amount) !== Number(order.amount)) {
+    if (moneyMinorUnits(params.total_amount ?? "") !== moneyMinorUnits(order.amount)) {
       throw new BadRequestError("Alipay amount mismatch");
     }
     const tradeStatus = params.trade_status ?? "";
@@ -423,8 +424,8 @@ export class PaymentService {
     const order = await this.getOrderByOrderNo(paymentField(transaction.out_trade_no ?? ""));
     const amount = transaction.amount as { total?: number; currency?: string } | undefined;
     if (
-      amount?.total !== Math.round(Number(order.amount) * 100) ||
-      (amount.currency && amount.currency !== "CNY")
+      !Number.isSafeInteger(amount?.total) || amount?.total !== providerAmountCents(order.amount) ||
+      amount?.currency !== "CNY"
     ) {
       throw new BadRequestError("Wechat Pay amount mismatch");
     }
@@ -461,6 +462,7 @@ export class PaymentService {
   private async processVerifiedCallback(input: PaymentCallbackInput): Promise<JsonObject> {
     return this.db.withTransaction(async (client) => {
       const order = await this.getOrderByOrderNoForUpdate(client, input.orderNo);
+      if (order.pay_channel !== input.channel) throw new BadRequestError("Payment channel mismatch");
       const idempotencyKey = `payment_callback:${input.channel}:${
         input.idempotencyKey ?? input.notifyId ?? input.orderNo
       }`;

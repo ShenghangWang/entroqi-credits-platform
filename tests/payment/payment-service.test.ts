@@ -236,3 +236,10 @@ describe("PaymentService", () => {
     expect(queries.some((query) => query.includes("insert into credit_transactions"))).toBe(false);
   });
 });
+
+it("rejects a signed callback for a different payment channel before ledger writes", async () => {
+  const rawData = { orderNo: "pay_abc", status: "paid" };
+  const { db, queries } = makeDatabase([[orderRow({ pay_channel: "wechat" })]]);
+  await expect(new PaymentService(db, "secret").processCallback({ channel: "card", orderNo: "pay_abc", notifyId: "notify-1", providerStatus: "paid", rawData, sign: paymentSignature(rawData, "secret"), requestHash: "hash" })).rejects.toThrow("Payment channel mismatch");
+  expect(queries).toHaveLength(1);
+});
