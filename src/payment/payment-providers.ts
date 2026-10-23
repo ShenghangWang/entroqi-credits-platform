@@ -1,3 +1,4 @@
+import { paymentField } from "./payment-field.js";
 import {
   createDecipheriv,
   createSign,
@@ -106,7 +107,7 @@ export class AlipayProvider {
       return data;
     }
     if (!data || data.code !== "10000") {
-      throw new BadRequestError(`Alipay rejected request: ${String(data?.sub_msg ?? data?.msg ?? text)}`);
+      throw new BadRequestError(`Alipay rejected request: ${paymentField(data?.sub_msg ?? data?.msg ?? text)}`);
     }
     return data;
   }
@@ -119,8 +120,8 @@ export class AlipayProvider {
       timeout_express: "3m"
     });
     return {
-      payUrl: String(data.qr_code ?? ""),
-      providerTradeNo: data.trade_no ? String(data.trade_no) : undefined
+      payUrl: paymentField(data.qr_code ?? ""),
+      providerTradeNo: data.trade_no ? paymentField(data.trade_no) : undefined
     };
   }
 
@@ -130,13 +131,13 @@ export class AlipayProvider {
       return {
         state: "pending",
         rawData: {
-          code: String(data.code ?? ""),
-          sub_code: String(data.sub_code),
-          sub_msg: String(data.sub_msg ?? "")
+          code: paymentField(data.code ?? ""),
+          sub_code: paymentField(data.sub_code),
+          sub_msg: paymentField(data.sub_msg ?? "")
         }
       };
     }
-    const status = String(data.trade_status ?? "");
+    const status = paymentField(data.trade_status ?? "");
     return {
       state:
         status === "TRADE_SUCCESS" || status === "TRADE_FINISHED"
@@ -144,9 +145,9 @@ export class AlipayProvider {
           : status === "TRADE_CLOSED"
             ? "failed"
             : "pending",
-      notifyId: data.trade_no ? String(data.trade_no) : undefined,
+      notifyId: data.trade_no ? paymentField(data.trade_no) : undefined,
       rawData: Object.fromEntries(
-        Object.entries(data).map(([key, value]) => [key, value === null ? null : String(value)])
+        Object.entries(data).map(([key, value]) => [key, value === null ? null : paymentField(value)])
       )
     };
   }
@@ -235,13 +236,13 @@ export class WechatPayProvider {
         currency: "CNY"
       }
     });
-    return { payUrl: String(data.code_url ?? "") };
+    return { payUrl: paymentField(data.code_url ?? "") };
   }
 
   async query(order: ProviderOrder): Promise<ProviderQuery> {
     const pathWithQuery = `/v3/pay/transactions/out-trade-no/${encodeURIComponent(order.orderNo)}?mchid=${encodeURIComponent(this.env.wechat.mchId)}`;
     const data = await this.request("GET", pathWithQuery);
-    const state = String(data.trade_state ?? "");
+    const state = paymentField(data.trade_state ?? "");
     return {
       state:
         state === "SUCCESS"
@@ -249,11 +250,11 @@ export class WechatPayProvider {
           : ["CLOSED", "REVOKED", "PAYERROR"].includes(state)
             ? "failed"
             : "pending",
-      notifyId: data.transaction_id ? String(data.transaction_id) : undefined,
+      notifyId: data.transaction_id ? paymentField(data.transaction_id) : undefined,
       rawData: Object.fromEntries(
         Object.entries(data).map(([key, value]) => [
           key,
-          value === null ? null : typeof value === "object" ? JSON.stringify(value) : String(value)
+          value === null ? null : typeof value === "object" ? JSON.stringify(value) : paymentField(value)
         ])
       )
     };

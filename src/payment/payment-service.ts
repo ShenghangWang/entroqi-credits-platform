@@ -1,3 +1,4 @@
+import { paymentField } from "./payment-field.js";
 import { randomUUID } from "node:crypto";
 import QRCode from "qrcode";
 import type { AppEnv } from "../config/env.js";
@@ -419,7 +420,7 @@ export class PaymentService {
     ) {
       throw new BadRequestError("Wechat Pay merchant identity mismatch");
     }
-    const order = await this.getOrderByOrderNo(String(transaction.out_trade_no ?? ""));
+    const order = await this.getOrderByOrderNo(paymentField(transaction.out_trade_no ?? ""));
     const amount = transaction.amount as { total?: number; currency?: string } | undefined;
     if (
       amount?.total !== Math.round(Number(order.amount) * 100) ||
@@ -427,22 +428,22 @@ export class PaymentService {
     ) {
       throw new BadRequestError("Wechat Pay amount mismatch");
     }
-    const tradeState = String(transaction.trade_state ?? "");
+    const tradeState = paymentField(transaction.trade_state ?? "");
     if (!["SUCCESS", "CLOSED", "REVOKED", "PAYERROR"].includes(tradeState)) {
       return mapOrder(order);
     }
     return this.processProviderResult({
       channel: "wechat",
       orderNo: order.order_no,
-      notifyId: String(transaction.transaction_id ?? body.id ?? ""),
+      notifyId: paymentField(transaction.transaction_id ?? body.id ?? ""),
       providerStatus: tradeState === "SUCCESS" ? "paid" : "failed",
       rawData: Object.fromEntries(
         Object.entries(transaction).map(([key, value]) => [
           key,
-          value === null ? null : typeof value === "object" ? JSON.stringify(value) : String(value)
+          value === null ? null : typeof value === "object" ? JSON.stringify(value) : paymentField(value)
         ])
       ),
-      idempotencyKey: `wechat_notify:${body.id || transaction.transaction_id || order.order_no}`
+      idempotencyKey: `wechat_notify:${paymentField(body.id) || paymentField(transaction.transaction_id) || order.order_no}`
     });
   }
 

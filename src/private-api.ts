@@ -81,5 +81,6 @@ export async function buildPrivateApp(db: Database, supplied: ServiceCredential[
       return result ?? reply.code(404).send({ error: "customer_unavailable" });
     } catch { return reply.code(503).send({ error: "billing_unavailable" }); }
   });
+  await app.ready();
   return app;
 }

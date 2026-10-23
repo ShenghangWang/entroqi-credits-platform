@@ -4,7 +4,6 @@ import dotenv from "dotenv";
 
 const moduleDir = path.dirname(fileURLToPath(import.meta.url));
 const serviceRoot = path.resolve(moduleDir, "../..");
-const repositoryRoot = serviceRoot;
 
 dotenv.config({ path: path.join(serviceRoot, ".env"), override: true });
 

@@ -3,7 +3,7 @@ import { buildPrivateApp, parseCredentials, type ServiceCredential } from '../sr
 import type { Database } from '../src/db/pool.js';
 const token = 'a'.repeat(43);
 const credential: ServiceCredential = { token, application: 'simulation', issuer: 'simulation-v1', onboarding: 'self_service', permissions: ['provision', 'balance'] };
-const db = { query: async () => { throw new Error('Unexpected DB access'); }, withTransaction: async () => { throw new Error('offline'); }, close: async () => {} } as Database;
+const db = { query: () => Promise.reject(new Error('Unexpected DB access')), withTransaction: () => Promise.reject(new Error('offline')), close: async () => {} } as Database;
 describe('private service boundary', () => {
   it('requires explicit strong unique credentials and consistent issuer policy', () => {
     expect(() => parseCredentials('[]')).toThrow();
