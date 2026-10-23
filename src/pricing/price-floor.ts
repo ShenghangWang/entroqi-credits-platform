@@ -23,8 +23,8 @@ export interface OfferCost {
 /** A cost-review result, not an order, entitlement, or authorization to dispatch. */
 export function reviewOfferPrice(cost: OfferCost, retailPrice?: string, now = Date.now()) {
   const margin = cost.targetMarginBps ?? 6000;
-  if (!/^[A-Za-z0-9._:-]{1,128}$/.test(cost.version) || cost.currency !== "CNY" ||
-      !Number.isSafeInteger(cost.validUntil) || cost.validUntil <= now || !Number.isSafeInteger(now) ||
+  if (typeof cost.version !== "string" || !/^[A-Za-z0-9._:-]{1,128}$/.test(cost.version) || cost.currency !== "CNY" ||
+      !Number.isSafeInteger(cost.validUntil) || cost.validUntil <= now || !Number.isSafeInteger(now) || now < 0 ||
       !Number.isInteger(margin) || margin < 5000 || margin > 8500 ||
       !Number.isInteger(cost.revenueReserveBps) || cost.revenueReserveBps < 0 || cost.revenueReserveBps > 2000 ||
       margin + cost.revenueReserveBps > 9500) throw new BadRequestError("Invalid, expired, or unsupported cost policy");

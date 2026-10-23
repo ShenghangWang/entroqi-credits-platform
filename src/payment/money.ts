@@ -2,6 +2,7 @@ import { BadRequestError } from "../domain/errors.js";
 
 /** Exact nonnegative CNY minor units; never round provider evidence. */
 export function moneyMinorUnits(value: string): bigint {
+  if (typeof value !== "string") throw new BadRequestError("Payment amount must be an exact decimal string");
   const match = /^(\d{1,16})(?:\.(\d{1,2}))?$/.exec(value);
   if (!match) throw new BadRequestError("Invalid payment amount");
   return BigInt(match[1]!) * 100n + BigInt((match[2] ?? "").padEnd(2, "0"));

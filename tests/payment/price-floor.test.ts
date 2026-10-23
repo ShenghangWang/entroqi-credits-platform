@@ -13,7 +13,7 @@ describe("paid-offer cost floor", () => {
     expect(() => reviewOfferPrice(high, "18.00", now)).toThrow();
     expect(reviewOfferPrice(high, "28.00", now)).toMatchObject({ minimumPrice: "25.98", contribution: "17.59" });
   });
-  it.each([{ validUntil: now }, { labor: "0.00" }, { supplier: "NaN" }, { targetMarginBps: 4999 }, { targetMarginBps: 9500 }, { revenueReserveBps: -1 }, { currency: "USD" }, { version: "" }])("fails closed for missing, stale or invalid cost evidence: %j", extra => {
+  it.each([{ validUntil: now }, { labor: "0.00" }, { supplier: "NaN" }, { targetMarginBps: 4999 }, { targetMarginBps: 9500 }, { revenueReserveBps: -1 }, { currency: "USD" }, { version: "" }, { version: undefined }, { version: null }])("fails closed for missing, stale or invalid cost evidence: %j", extra => {
     expect(() => reviewOfferPrice(cost(extra as Partial<OfferCost>), "3.00", now)).toThrow();
   });
   it("requires labor even with free inference and does not convert free access into a paid order", () => {

@@ -13,3 +13,7 @@ describe("payment amount evidence", () => {
     expect(() => moneyMinorUnits(amount)).toThrow();
   });
 });
+
+it.each([null, undefined, 0.29, {}, true])("rejects non-string money evidence %j", value => {
+  expect(() => moneyMinorUnits(value as unknown as string)).toThrow();
+});
