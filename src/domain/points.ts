@@ -1,3 +1,5 @@
+import { BadRequestError } from "./errors.js";
+
 const SCALE = 10_000n;
 const FRACTION_DIGITS = 4;
 
@@ -59,4 +61,14 @@ export function comparePoints(left: PointAmount, right: PointAmount): number {
 
   if (a === b) return 0;
   return a > b ? 1 : -1;
+}
+
+/** DECIMAL(18,4), checked before any balance mutation. */
+export function assertCreditAmount(value: PointAmount, allowZero = false): void {
+  let scaled: bigint;
+  try { scaled = toScaledPoints(value); }
+  catch { throw new BadRequestError("Invalid credit amount"); }
+  if (scaled < (allowZero ? 0n : 1n) || scaled > 999_999_999_999_999_999n) {
+    throw new BadRequestError("Credit amount is outside the supported range");
+  }
 }

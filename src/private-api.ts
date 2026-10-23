@@ -1,3 +1,5 @@
+import { closeCustomer } from "./customer/close-customer.js";
+import { ConflictError } from "./domain/errors.js";
 import { createHash, timingSafeEqual } from "node:crypto";
 import Fastify from "fastify";
 import type { Database } from "./db/pool.js";
@@ -5,7 +7,7 @@ import type { Database } from "./db/pool.js";
 export type ServiceCredential = {
   token: string; application: string; issuer: string;
   onboarding: "self_service" | "managed";
-  permissions: ("provision" | "balance")[];
+  permissions: ("provision" | "balance" | "close")[];
 };
 export function parseCredentials(raw: string): ServiceCredential[] {
   const values: unknown = JSON.parse(raw);
@@ -17,7 +19,7 @@ export function parseCredentials(raw: string): ServiceCredential[] {
         typeof c.application !== "string" || !/^[a-z0-9-]{1,100}$/.test(c.application) ||
         typeof c.issuer !== "string" || !/^[A-Za-z0-9:/._-]{1,100}$/.test(c.issuer) ||
         !["self_service", "managed"].includes(c.onboarding) || !Array.isArray(c.permissions) ||
-        !c.permissions.length || c.permissions.some(p => !["provision", "balance"].includes(p))) throw new Error("Invalid service credential");
+        !c.permissions.length || c.permissions.some(p => !["provision", "balance", "close"].includes(p))) throw new Error("Invalid service credential");
     seen.add(c.token);
   }
   // One authority cannot assign conflicting onboarding policies to the same namespace.
@@ -35,9 +37,9 @@ export async function buildPrivateApp(db: Database, supplied: ServiceCredential[
     try { await db.query("select 1"); return { status: "ok" }; }
     catch { return reply.code(503).send({ error: "database_unavailable" }); }
   });
-  app.post<{ Body: { subject: string; action: "provision" | "balance" } }>("/v1/customer", {
+  app.post<{ Body: { subject: string; action: "provision" | "balance" | "close" } }>("/v1/customer", {
     schema: { body: { type: "object", required: ["subject", "action"], additionalProperties: false,
-      properties: { subject: { type: "string", minLength: 1, maxLength: 191, pattern: "^[A-Za-z0-9_-]+$" }, action: { enum: ["provision", "balance"] } } } },
+      properties: { subject: { type: "string", minLength: 1, maxLength: 191, pattern: "^[A-Za-z0-9_-]+$" }, action: { enum: ["provision", "balance", "close"] } } } },
     onRequest: async (request, reply) => {
       const header = request.headers.authorization;
       if (typeof header !== "string" || !/^Bearer [A-Za-z0-9_-]{43,128}$/.test(header) ||
@@ -51,6 +53,7 @@ export async function buildPrivateApp(db: Database, supplied: ServiceCredential[
     // A managed caller must be an authorized product backend, after its staff authorization.
     // No browser-supplied role, application, wallet ID, balance or registration policy is accepted.
     try {
+      if (action === "close") return await closeCustomer(db, caller.issuer, subject);
       const result = await db.withTransaction(async client => {
         if (action === "provision") {
           await client.query(`insert into customer_external_identities (issuer, subject) values ($1, $2)
@@ -79,7 +82,10 @@ export async function buildPrivateApp(db: Database, supplied: ServiceCredential[
           reserved: balance.locked_balance, available: balance.available_balance, currency: balance.currency };
       });
       return result ?? reply.code(404).send({ error: "customer_unavailable" });
-    } catch { return reply.code(503).send({ error: "billing_unavailable" }); }
+    } catch (error) {
+      if (error instanceof ConflictError) return reply.code(409).send({ error: "closure_blocked" });
+      return reply.code(503).send({ error: "billing_unavailable" });
+    }
   });
   await app.ready();
   return app;

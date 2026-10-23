@@ -128,3 +128,18 @@ describe("BalanceService", () => {
     ).rejects.toBeInstanceOf(InsufficientCreditsError);
   });
 });
+
+describe("balance mutation amount validation", () => {
+  for (const method of ["increaseTotalBalance", "freezeCredits", "settleFrozenCredits", "releaseFrozenCredits"] as const) {
+    it.each(["-1", "0", "NaN", "Infinity", "0.00001", "100000000000000"])(`${method} rejects %s before SQL`, async points => {
+      const { db, client, queries } = makeDatabase();
+      await expect(new BalanceService(db)[method]({ account, points, client })).rejects.toMatchObject({ code: "bad_request" });
+      expect(queries).toHaveLength(0);
+    });
+  }
+  it("rejects balance overflow before SQL", async () => {
+    const { db, client, queries } = makeDatabase();
+    await expect(new BalanceService(db).increaseTotalBalance({ account: { ...account, totalBalance: "99999999999999.9999" }, points: "0.0001", client })).rejects.toMatchObject({ code: "bad_request" });
+    expect(queries).toHaveLength(0);
+  });
+});

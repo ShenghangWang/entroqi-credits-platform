@@ -21,6 +21,7 @@ describe('private service boundary', () => {
         expect((await app.inject({ method: 'POST', url: '/v1/customer', headers, payload: { ...payload, [field]: 'forged' } })).statusCode).toBe(400);
       }
       expect((await app.inject({ method: 'POST', url: '/v1/customer', headers: { authorization: 'Bearer ' + 'b'.repeat(43) }, payload })).statusCode).toBe(403);
+      expect((await app.inject({ method: 'POST', url: '/v1/customer', headers, payload: { subject: "verified-user", action: "close" } })).statusCode).toBe(403);
       expect((await app.inject({ method: 'POST', url: '/v1/customer', headers, payload })).statusCode).toBe(503);
       for (const url of ['/billing/freeze', '/integration/applications', '/payment-orders', '/admin/accounts', '/agents']) {
         expect((await app.inject({ method: 'POST', url, headers, payload: {} })).statusCode).toBe(404);

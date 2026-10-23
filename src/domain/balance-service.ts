@@ -1,5 +1,5 @@
 import type { Database, DatabaseClient } from "../db/pool.js";
-import { comparePoints, subtractPoints, addPoints } from "./points.js";
+import { comparePoints, subtractPoints, addPoints, assertCreditAmount } from "./points.js";
 import { InsufficientCreditsError, NotFoundError } from "./errors.js";
 
 export type LockedAccount = {
@@ -67,6 +67,7 @@ export class BalanceService {
     points: string;
     client: DatabaseClient;
   }): Promise<LockedAccount> {
+    assertCreditAmount(input.points);
     const totalBalance = addPoints(input.account.totalBalance, input.points);
 
     return this.updateBalances(input.client, input.account.id, {
@@ -80,6 +81,7 @@ export class BalanceService {
     points: string;
     client: DatabaseClient;
   }): Promise<LockedAccount> {
+    assertCreditAmount(input.points);
     if (comparePoints(input.account.availableBalance, input.points) < 0) {
       throw new InsufficientCreditsError("Available balance is not enough to freeze credits");
     }
@@ -97,6 +99,7 @@ export class BalanceService {
     points: string;
     client: DatabaseClient;
   }): Promise<LockedAccount> {
+    assertCreditAmount(input.points);
     if (comparePoints(input.account.lockedBalance, input.points) < 0) {
       throw new InsufficientCreditsError("Locked balance is not enough to settle credits");
     }
@@ -115,6 +118,7 @@ export class BalanceService {
     points: string;
     client: DatabaseClient;
   }): Promise<LockedAccount> {
+    assertCreditAmount(input.points);
     if (comparePoints(input.account.lockedBalance, input.points) < 0) {
       throw new InsufficientCreditsError("Locked balance is not enough to release credits");
     }
@@ -135,6 +139,8 @@ export class BalanceService {
       lockedBalance: string;
     }
   ): Promise<LockedAccount> {
+    assertCreditAmount(balances.totalBalance, true);
+    assertCreditAmount(balances.lockedBalance, true);
     const result = await client.query<LockedAccountRow>(
       `
         update credit_accounts
