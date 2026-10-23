@@ -372,7 +372,23 @@ const MIGRATIONS = [
   }
 ];
 
+// Additive identity adapter; original tables and financial data remain unchanged.
+MIGRATIONS.push({ name: "000009_entroqi_identity", statements: [
+  `CREATE TABLE IF NOT EXISTS customer_external_identities (
+    issuer VARCHAR(100) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    subject VARCHAR(191) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    user_id BIGINT NULL,
+    account_id BIGINT NULL,
+    PRIMARY KEY (issuer, subject),
+    UNIQUE KEY identity_user_unique (user_id),
+    UNIQUE KEY identity_account_unique (account_id),
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (account_id) REFERENCES credit_accounts(id)
+  )`
+] });
+
 const DOWN_TABLES = [
+  "customer_external_identities",
   "agent_profiles",
   "platform_admins",
   "agent_commissions",

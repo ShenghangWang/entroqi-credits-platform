@@ -1,10 +1,11 @@
-import { buildApp } from "./app.js";
+import { buildPrivateApp, parseCredentials } from "./private-api.js";
 import { loadEnv } from "./config/env.js";
 import { createDatabase } from "./db/pool.js";
 
 const env = loadEnv();
+const credentials = parseCredentials(process.env.CREDITS_SERVICE_CREDENTIALS ?? "[]");
 const db = createDatabase(env);
-const app = await buildApp({ env, db });
+const app = await buildPrivateApp(db, credentials);
 let shutdownPromise: Promise<void> | null = null;
 
 async function shutdown(signal: string): Promise<void> {

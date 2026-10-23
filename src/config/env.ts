@@ -4,15 +4,13 @@ import dotenv from "dotenv";
 
 const moduleDir = path.dirname(fileURLToPath(import.meta.url));
 const serviceRoot = path.resolve(moduleDir, "../..");
-const repositoryRoot = path.resolve(serviceRoot, "../..");
+const repositoryRoot = serviceRoot;
 
-dotenv.config({ path: path.join(repositoryRoot, "backend", ".env") });
 dotenv.config({ path: path.join(serviceRoot, ".env"), override: true });
 
 function resolveSecretPath(value: string | undefined): string {
   if (!value) return "";
-  const normalized = value.replace(/^[/\\]+/, "");
-  return path.resolve(repositoryRoot, normalized);
+  return path.resolve(serviceRoot, value);
 }
 
 function paymentPublicBaseUrl(): string {

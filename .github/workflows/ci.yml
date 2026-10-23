@@ -1,0 +1,44 @@
+name: Credits validation
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_DATABASE: credits_test
+          MYSQL_USER: credits
+          MYSQL_PASSWORD: credits_test_only
+          MYSQL_ROOT_PASSWORD: root_test_only
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 --silent"
+          --health-interval=5s --health-timeout=5s --health-retries=30
+    env:
+      MYSQL_HOST: 127.0.0.1
+      MYSQL_PORT: 3306
+      MYSQL_DATABASE: credits_test
+      MYSQL_USER: credits
+      MYSQL_PASSWORD: credits_test_only
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '24.19.0'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run typecheck && npm run lint && npm test && npm run build
+      - run: npm run db:migrate
+      - run: npm run test:integration -- tests/private-identity.integration.test.ts
+      - run: docker compose -f deploy/compose.yml config --quiet
+        env:
+          MYSQL_ROOT_PASSWORD: root_test_only
+          CREDITS_SERVICE_CREDENTIALS: '[{"token":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","application":"simulation","issuer":"simulation-v1","onboarding":"self_service","permissions":["provision","balance"]}]'
+      - run: docker build -t entroqi-credits:test .
