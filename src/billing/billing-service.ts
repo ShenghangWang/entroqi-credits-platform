@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type { Database, DatabaseClient } from "../db/pool.js";
 import {
   AccountResolver,
@@ -202,7 +203,7 @@ export class BillingService {
   }
 
   async estimate(input: EstimateBillingInput): Promise<JsonObject> {
-    return this.executeIdempotent(input, async (client) => {
+    return this.executeIdempotent(input, "estimate", async (client) => {
       const accountResolver = new AccountResolver(client);
       const applicationRegistry = new ApplicationRegistry(client);
       const ledger = new CreditLedgerService(client);
@@ -249,7 +250,7 @@ export class BillingService {
   }
 
   async freeze(input: BillingTaskMutationInput): Promise<JsonObject> {
-    return this.executeIdempotent(input, async (client) => {
+    return this.executeIdempotent(input, "freeze", async (client) => {
       const task = await this.getTaskForUpdate(client, input.billingTaskId, input.userId);
       if (task.status !== "estimated") {
         throw new ConflictError(`Billing task ${input.billingTaskId} is not estimated`);
@@ -289,7 +290,7 @@ export class BillingService {
   }
 
   async settle(input: BillingTaskMutationInput & { actualPoints?: string }): Promise<JsonObject> {
-    return this.executeIdempotent(input, async (client) => {
+    return this.executeIdempotent(input, "settle", async (client) => {
       const task = await this.getTaskForUpdate(client, input.billingTaskId, input.userId);
       if (task.status !== "frozen") {
         throw new ConflictError(`Billing task ${input.billingTaskId} is not frozen`);
@@ -338,7 +339,7 @@ export class BillingService {
   }
 
   async refund(input: BillingTaskMutationInput): Promise<JsonObject> {
-    return this.executeIdempotent(input, async (client) => {
+    return this.executeIdempotent(input, "refund", async (client) => {
       const task = await this.getTaskForUpdate(client, input.billingTaskId, input.userId);
       if (task.status !== "frozen") {
         throw new ConflictError(`Billing task ${input.billingTaskId} is not frozen`);
@@ -427,13 +428,14 @@ export class BillingService {
 
   private async executeIdempotent(
     input: { userId: number; idempotencyKey: string; requestHash: string },
+    operationName: "estimate" | "freeze" | "settle" | "refund",
     operation: (client: DatabaseClient) => Promise<JsonObject>
   ): Promise<JsonObject> {
     return this.db.withTransaction(async (client) => {
       const idempotency = new IdempotencyService(client);
       const reservation = await idempotency.reserve({
         userId: input.userId,
-        idempotencyKey: input.idempotencyKey,
+        idempotencyKey: `billing:${operationName}:${createHash("sha256").update(input.idempotencyKey).digest("hex")}`,
         requestHash: input.requestHash,
         expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
       });

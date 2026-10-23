@@ -772,3 +772,14 @@ describe("actual usage settlement", () => {
     await expect(accountBalances(account.id)).resolves.toEqual({ totalBalance: "50.0000", lockedBalance: "12.0000", availableBalance: "38.0000" });
   });
 });
+
+it("scopes a caller retry key to the billing operation", async () => {
+  const user = await createUser("operation-key");
+  const account = await createPersonalAccount(user.id, "50.0000");
+  await createApplicationFunction("12.0000");
+  const task = await estimate({ userId: user.id, key: "shared-caller-key", bizId: "operation-job" });
+  await expect(freeze(user.id, task.billingTaskId, "shared-caller-key")).resolves.toMatchObject({ status: "frozen" });
+  await expect(settle(user.id, task.billingTaskId, "shared-caller-key")).resolves.toMatchObject({ status: "settled" });
+  await expect(settle(user.id, task.billingTaskId, "shared-caller-key")).resolves.toMatchObject({ idempotentReplay: true });
+  await expect(accountBalances(account.id)).resolves.toMatchObject({ totalBalance: "38.0000", lockedBalance: "0.0000" });
+});
