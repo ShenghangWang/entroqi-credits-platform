@@ -10,7 +10,9 @@ export type ServiceCredential = {
   permissions: ("provision" | "balance" | "close")[];
 };
 export function parseCredentials(raw: string): ServiceCredential[] {
-  const values: unknown = JSON.parse(raw);
+  let values: unknown;
+  try { values = JSON.parse(raw); }
+  catch { throw new Error("Invalid service credentials JSON"); }
   if (!Array.isArray(values) || !values.length || values.length > 32) throw new Error("Configure service credentials");
   const seen = new Set<string>();
   for (const entry of values) {
