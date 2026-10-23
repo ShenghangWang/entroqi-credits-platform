@@ -34,6 +34,14 @@ jobs:
           node-version: '24.19.0'
           cache: npm
       - run: npm ci --ignore-scripts
+      - run: npm audit --omit=dev --json > production-dependency-audit.json
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        if: always()
+        with:
+          name: private-production-dependency-audit
+          path: production-dependency-audit.json
+          retention-days: 7
+          if-no-files-found: error
       - run: npm run typecheck && npm run lint && npm test && npm run build
       - run: npm run db:migrate
       - run: npm run db:migrate
