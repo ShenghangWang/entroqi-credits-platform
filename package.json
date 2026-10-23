@@ -1,0 +1,42 @@
+{
+  "name": "reusable-credits-platform",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Reusable, pluggable billing and credits platform module.",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/server.js",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint \"src/**/*.ts\" \"tests/**/*.ts\" \"*.config.ts\"",
+    "test": "vitest run",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "db:migrate": "node -r dotenv/config scripts/migrate-mysql.cjs",
+    "db:rollback": "node -r dotenv/config scripts/migrate-mysql.cjs --down",
+    "db:status": "node -r dotenv/config scripts/db-status.cjs",
+    "seed:used-car": "node -r dotenv/config scripts/seed-used-car-platform.cjs",
+    "seed:used-car:demo": "node -r dotenv/config scripts/seed-used-car-platform.cjs --with-demo-account"
+  },
+  "engines": {
+    "node": ">=20.11.0"
+  },
+  "dependencies": {
+    "@fastify/swagger": "^9.5.1",
+    "@fastify/swagger-ui": "^5.2.3",
+    "dotenv": "^16.5.0",
+    "fastify": "^5.3.3",
+    "mysql2": "^3.22.4",
+    "qrcode": "^1.5.4"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.27.0",
+    "@types/node": "^22.15.21",
+    "@types/qrcode": "^1.5.6",
+    "eslint": "^9.27.0",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.33.0",
+    "vitest": "^3.1.4"
+  }
+}
