@@ -14,6 +14,7 @@ Baseline Credits `e175b9306e858fe3683643020901930d5e2d16de`; Simulation `dc6c4c3
 | Product cloud-project storage, quota/fulfillment and compute metadata allocation was incomplete | [Canonical contract](https://github.com/ShenghangWang/ai-native-simulation-platform/blob/main/docs/architecture/data-ownership-and-cloud-lifecycle.md) defines product schemas/private objects, version/quotas/jobs/usage, Credits commercial truth and failure/closure/recovery states. These services remain unimplemented/disabled. |
 | Existing foreign keys/wallet checks depend on transactional engines; migrations rely on server default | Add real-MySQL fixture assertion that all migrated tables use InnoDB. Deployed-engine verification remains required; no engine conversion/migration performed. |
 | Legacy catalog lacks complete product-scoped offer/entitlement API; business-key deduplication, durable provider dispatch/refunds and multi-app spending authorization remain incomplete | Existing B04/B05 gates retained and made explicit; legacy routes stay unmounted. |
+| Overlapping index prefixes, independently valid app/function FKs without a pairing constraint and missing order-currency snapshot need commercial hardening | Canonical contract records concrete candidates and future EXPLAIN/composite-scope/provenance tests; no indexes dropped or historical terms guessed. |
 
 ## Changes and validation boundary
 
@@ -22,3 +23,7 @@ One runtime change: reject ambiguous namespace assignments in `parseCredentials`
 Local pinned Node 24.19.0: all 119 unit tests and TypeScript check pass. Full exact-source CI, migrations/MySQL integration, lint/build/audit and packaging are still required; local units alone do not prove database isolation. No load, worker, merchant/payment/refund, selected-provider object semantics, live financial recovery or arbitrary-scale certification is claimed.
 
 The default identity model is separate app wallets, not company-wide shared login/credit. Future verified linking requires explicit constraint/lifecycle migration. Preserve MySQL/InnoDB, exact ledger and current product data separation; no rewrite is justified by observed requirements. Simulation acceptance remains 19/62 (40.34%) without credit for this review.
+
+## First CI attempt and correction
+
+Candidate `8f697e321644b2c8c4ec891655e011a77c3a62c3`, [run 40183173688](https://github.com/ShenghangWang/entroqi-credits-platform/actions/runs/40183173688): type/lint/build, 119 units, production audit and repeated migrations passed. Real MySQL had 27 passing/one failing assertion: the new information_schema query returned uppercase `ENGINE`/`TABLE_NAME`, while the typed assertion read lowercase fields. All 20 returned engines were InnoDB and the three-app isolation test passed. Correct the query with explicit lowercase aliases, matching existing schema tests; retain every engine assertion. Compose/Docker were skipped after this failure. A fresh full corrected-source run is required; this failed run does not certify completion.
