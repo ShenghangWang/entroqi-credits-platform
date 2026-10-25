@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { loadEnv } from '../src/config/env.js';
 import { createDatabase } from '../src/db/pool.js';
 import { buildPrivateApp } from '../src/private-api.js';
+import { registerIdentityNamespaces } from '../src/customer/identity-namespaces.js';
 it('concurrent provisioning gives one zero wallet; issuer namespaces remain separate', async () => {
   const db = createDatabase(loadEnv());
   const token = 'a'.repeat(43), second = 'b'.repeat(43);
@@ -24,6 +25,44 @@ it('concurrent provisioning gives one zero wallet; issuer namespaces remain sepa
     expect(other.json<Customer>().accountId).not.toBe(bodies[0]!.accountId);
     const count = await db.query<{ count: number }>('select count(*) as count from credit_accounts where user_id = $1', [bodies[0]!.customerId]);
     expect(Number(count.rows[0]?.count)).toBe(1);
+  } finally { await app.close(); await db.close(); }
+});
+
+it('one company subject provisions one shared wallet concurrently across three applications; unlink and global closure are separate', async () => {
+  const db = createDatabase(loadEnv()), issuer = 'company-' + randomUUID(), subject = randomUUID();
+  const credentials = ['simulation', 'atlas-simulation', 'atlas-modern-ai'].map((application, i) => ({
+    token: String(i + 1).repeat(43), application, issuer, identityMode: 'company' as const, onboarding: 'self_service' as const,
+    permissions: ['provision', 'balance', 'unlink'] as ('provision' | 'balance' | 'unlink')[]
+  }));
+  const authority = { token: '4'.repeat(43), application: 'company-identity', issuer, identityMode: 'company' as const, onboarding: 'self_service' as const, permissions: ['close'] as 'close'[] };
+  const app = await buildPrivateApp(db, [...credentials, authority]);
+  const call = (i: number, action: string, who = subject) => app.inject({ method: 'POST', url: '/v1/customer', headers: { authorization: 'Bearer ' + [...credentials, authority][i]!.token }, payload: { subject: who, action } });
+  try {
+    const replies = await Promise.all(Array.from({ length: 12 }, (_, i) => call(i % 3, 'provision')));
+    expect(replies.map(r => r.statusCode)).toEqual(Array(12).fill(200));
+    const bodies = replies.map(r => r.json<{ customerId: string; accountId: string }>());
+    expect(new Set(bodies.map(r => r.customerId)).size).toBe(1); expect(new Set(bodies.map(r => r.accountId)).size).toBe(1);
+    expect(replies[0]!.json()).toMatchObject({ issuer, total: '0.0000' });
+    expect((await call(1, 'close')).statusCode).toBe(403);
+    expect((await call(1, 'unlink')).statusCode).toBe(200); expect((await call(1, 'unlink')).statusCode).toBe(200);
+    expect((await call(1, 'balance')).statusCode).toBe(404);
+    expect((await call(0, 'balance')).json<{ accountId: string }>().accountId).toBe(bodies[0]!.accountId);
+    expect((await call(2, 'balance')).json<{ accountId: string }>().accountId).toBe(bodies[0]!.accountId);
+    expect((await call(1, 'provision')).json<{ accountId: string }>().accountId).toBe(bodies[0]!.accountId);
+    await db.query('update credit_accounts set total_balance=1 where id=$1', [bodies[0]!.accountId]);
+    expect((await call(3, 'close')).statusCode).toBe(409);
+    await db.query('update credit_accounts set total_balance=0 where id=$1', [bodies[0]!.accountId]);
+    expect((await call(3, 'close')).statusCode).toBe(200);
+    for (const i of [0, 1, 2]) expect((await call(i, 'provision')).statusCode).toBe(404);
+    const returning = (await call(0, 'provision', randomUUID())).json<{ accountId: string; customerId: string }>();
+    expect(returning.accountId).not.toBe(bodies[0]!.accountId); expect(returning.customerId).not.toBe(bodies[0]!.customerId);
+    const states = await db.query<{ status: string }>('select status from customer_application_memberships where issuer=$1 and subject=$2', [issuer, subject]);
+    expect(states.rows.map(r => r.status)).toEqual(['closed', 'closed', 'closed']);
+    const rotated = { ...credentials[0]!, token: '5'.repeat(43) };
+    await registerIdentityNamespaces(db, [rotated]);
+    await expect(registerIdentityNamespaces(db, [{ ...rotated, issuer: issuer + '-changed' }])).rejects.toThrow('reassignment');
+    await expect(registerIdentityNamespaces(db, [{ ...rotated, identityMode: 'isolated' }])).rejects.toThrow('reassignment');
+    expect((await db.query<{ issuer: string }>('select issuer from customer_application_namespaces where application=$1', ['simulation'])).rows[0]?.issuer).toBe(issuer);
   } finally { await app.close(); await db.close(); }
 });
 

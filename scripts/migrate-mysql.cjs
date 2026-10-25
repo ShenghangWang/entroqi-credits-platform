@@ -403,7 +403,33 @@ async function ensureWalletUniqueness(connection) {
   }
 }
 
+MIGRATIONS.push({ name: "000011_company_identity_namespaces", statements: [
+  `CREATE TABLE IF NOT EXISTS customer_identity_namespaces (
+    issuer VARCHAR(100) CHARACTER SET ascii COLLATE ascii_bin PRIMARY KEY,
+    identity_mode ENUM('isolated','company') NOT NULL,
+    onboarding ENUM('managed','self_service') NOT NULL
+  ) ENGINE=InnoDB`,
+  `CREATE TABLE IF NOT EXISTS customer_application_namespaces (
+    application VARCHAR(100) CHARACTER SET ascii COLLATE ascii_bin PRIMARY KEY,
+    issuer VARCHAR(100) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    UNIQUE KEY application_issuer_pair(application,issuer),
+    FOREIGN KEY (issuer) REFERENCES customer_identity_namespaces(issuer)
+  ) ENGINE=InnoDB`,
+  `CREATE TABLE IF NOT EXISTS customer_application_memberships (
+    application VARCHAR(100) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    issuer VARCHAR(100) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    subject VARCHAR(191) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    status ENUM('active','left','closed') NOT NULL,
+    PRIMARY KEY(application,issuer,subject),
+    FOREIGN KEY(application,issuer) REFERENCES customer_application_namespaces(application,issuer),
+    FOREIGN KEY(issuer,subject) REFERENCES customer_external_identities(issuer,subject)
+  ) ENGINE=InnoDB`
+] });
+
 const DOWN_TABLES = [
+  "customer_application_memberships",
+  "customer_application_namespaces",
+  "customer_identity_namespaces",
   "customer_external_identities",
   "agent_profiles",
   "platform_admins",

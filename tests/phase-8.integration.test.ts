@@ -27,6 +27,9 @@ afterAll(async () => {
 
 beforeEach(async () => {
   const tables = [
+    "customer_application_memberships",
+    "customer_application_namespaces",
+    "customer_identity_namespaces",
     "customer_external_identities",
     "agent_commissions",
     "agent_relations",

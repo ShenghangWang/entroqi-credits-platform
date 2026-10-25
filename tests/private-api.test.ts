@@ -44,4 +44,14 @@ describe('private service boundary', () => {
     expect(parseCredentials(JSON.stringify([credential, { ...rotated, permissions: ['balance'] }]))).toHaveLength(2);
     expect(parseCredentials(JSON.stringify([credential, { ...rotated, application: 'atlas-simulation', issuer: 'atlas-simulation-v1' }]))).toHaveLength(2);
   });
+  it('shares only explicit company issuers and confines global closure to company identity authority', () => {
+    const company = { ...credential, identityMode: 'company', issuer: 'entroqi-company-v1', permissions: ['provision', 'balance', 'unlink'] };
+    const atlas = { ...company, application: 'atlas-simulation', token: 'b'.repeat(43) };
+    const authority = { ...company, application: 'company-identity', token: 'c'.repeat(43), permissions: ['close'] };
+    expect(parseCredentials(JSON.stringify([company, atlas, authority]))).toHaveLength(3);
+    for (const invalid of [{ ...company, permissions: ['close'] }, { ...company, onboarding: 'managed' }, { ...authority, permissions: ['balance'] }]) {
+      expect(() => parseCredentials(JSON.stringify([invalid]))).toThrow();
+    }
+    expect(() => parseCredentials(JSON.stringify([company, { ...atlas, identityMode: 'isolated' }]))).toThrow();
+  });
 });

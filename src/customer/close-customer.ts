@@ -6,7 +6,7 @@ import { comparePoints } from "../domain/points.js";
  * Financial identity is retained; reusable login identifiers are released atomically.
  * Returning users must receive a new immutable product subject.
  */
-export async function closeCustomer(db: Database, issuer: string, subject: string): Promise<{ closed: true }> {
+export async function closeCustomer(db: Database, issuer: string, subject: string, company = false): Promise<{ closed: true }> {
   return db.withTransaction(async client => {
     await client.query(`insert into customer_external_identities (issuer, subject) values ($1, $2)
       on duplicate key update issuer = issuer`, [issuer, subject]);
@@ -45,6 +45,7 @@ export async function closeCustomer(db: Database, issuer: string, subject: strin
     if (Number(obligations.rows[0]?.count ?? 1) !== 0) throw new ConflictError("Resolve outstanding account responsibilities before closing");
     await client.query("update credit_accounts set status = 'closed', updated_at = now() where user_id = $1", [row.user_id]);
     await client.query("update users set phone = null, email = null, username = null, password_hash = null, status = 'closed', updated_at = now() where id = $1", [row.user_id]);
+    if (company) await client.query("update customer_application_memberships set status='closed' where issuer=$1 and subject=$2", [issuer, subject]);
     return { closed: true };
   });
 }

@@ -1,12 +1,14 @@
 # Entroqi Credits Platform
 
-[Database/multi-app review](docs/verification/database-architecture-2026-10-25.md) and [current integration contract](docs/integration-contract.md) separate this customer API from future paid services. Products own projects/jobs; Credits owns financial state. Same-configuration app/issuer ambiguity is rejected; persistent namespace registration remains required before a second real app uses financial state.
+Current owner correction: [one company account across apps](docs/verification/company-identity-2026-10-25.md). Explicit company-mode credentials share a stable issuer/subject and financial customer/wallet; namespaces and app bindings persist. Products own lazy profiles/roles and may unlink their own membership. Only the company identity authority can close the global financial identity. Legacy isolated issuers remain supported; no automatic merge or paid enablement.
+
+[Database/multi-app review](docs/verification/database-architecture-2026-10-25.md) and [current integration contract](docs/integration-contract.md) separate this customer API from future paid services. Products own projects/jobs; Credits owns financial state. The earlier separate-app assumption is superseded by company mode and persisted namespace registration; isolated legacy issuers retain strict separation.
 
 Private standalone shared billing core. One maintained main branch; per-product onboarding policies support self-service or authorized-staff provisioning. Original unmodified extraction is preserved at commit `306fbf3d41b863e3baa07bd54c99c2abba2d78db`.
 
 The standalone entry point exposes authenticated zero-balance customer provisioning, balance queries and permission-scoped guarded customer closure. Existing legacy ledger, payment and agent implementations remain in source for subsequent hardening; they are not mounted by this server. This is an integration foundation, not a live payment service.
 
-See [deployment](docs/deployment.md) and [implementation specification](docs/tasks/B02-B03-private-identity.md). Simulation owns login/passwords/verification; billing stores only immutable issuer/subject mappings and wallets. No email-based account merging, agent requirement, default credits, copied operational data or atlas implementation.
+See [deployment](docs/deployment.md) and [implementation specification](docs/tasks/B02-B03-private-identity.md). The company identity authority owns login/passwords/verification; Simulation is its first client. Billing stores immutable issuer/subject mappings, scoped membership and wallets. No email-based account merging, agent requirement, default credits, copied operational data or atlas implementation.
 
 Checks: `npm ci --ignore-scripts`, `npm run typecheck`, `npm run lint`, `npm test`, `npm run build`. Isolated MySQL: `npm run db:migrate`, then `npm run test:integration` for every database suite. CI runs these, a production dependency audit and Docker packaging. Development/CI uses Node 24.19.0; the container is independently built in CI.
 
