@@ -1,154 +1,39 @@
-# External AI Application Integration Contract
+# Private product integration contract
 
-The Credits Platform is reusable billing infrastructure. External AI applications pass only billing metadata; vertical business data stays outside this module.
+Current contract: 25 October 2026. This replaces the old car-sales route walkthrough as live integration guidance. The original remains in Git history and the preserved baseline; its extracted route builders are not mounted by the standalone server.
 
-## Register An Application
+## Currently mounted API
 
-```http
-POST /integration/applications
-```
-
-```json
-{
-  "code": "used_car_ai",
-  "name": "Used Car AI",
-  "description": "AI image generation for used car dealers"
-}
-```
-
-## Register Billable Functions
+Only `GET /health`, `GET /health/db` and authenticated `POST /v1/customer` are available. Keep them private; the product backend calls through its service credential. A public browser uses its product's authenticated account boundary, never this bearer token or a caller-selected financial ID.
 
 ```http
-POST /integration/applications/used_car_ai/functions
+POST /v1/customer
+Authorization: Bearer <private-product-token>
+Content-Type: application/json
+
+{"subject":"immutable-verified-product-subject","action":"provision"}
 ```
 
-```json
-{
-  "code": "car_bg_showroom",
-  "name": "Car Showroom Background",
-  "description": "Generate a showroom background for one vehicle image",
-  "chargeMode": "estimate_required",
-  "defaultPoints": "12.0000"
-}
-```
+Actions: `provision`, `balance`, `close`, each requiring its explicit credential permission. No additional body fields are accepted. The backend obtains the subject from its verified session and authorizes closure with reauthentication. Credential configuration supplies `application`, stable `issuer`, onboarding policy and allowed actions. The current database lookup is binary `(issuer, subject)`; the application label does not add another SQL key.
 
-Supported charge modes:
+Provision creates one zero-balance customer/wallet or replays the existing mapping. Balance does not create an account. Replies contain internal customer/account IDs and exact decimal-string balances for the trusted backend; Simulation returns only checked balances to its browser. `close` returns `{ "closed": true }` after obligation checks, contact release and retained tombstone. Nonzero funds/holds and unresolved responsibilities block closure; old subjects cannot reprovision, and a returning signup gets a fresh subject. Product-session revocation and product data lifecycle remain the product's responsibility. Errors do not authorize retrying a paid action or changing identity.
 
-- `fixed`
-- `dynamic`
-- `estimate_required`
+## Multiple apps and rotation
 
-## Runtime Usage Flow
+Use a distinct stable issuer and separate service token for Simulation and each Atlas product. Configuration rejects one issuer assigned to multiple applications or onboarding policies and multiple issuers assigned to one application. Token/permission rotation within the same app/issuer is allowed. Removing an old token must not change the namespace or recreate wallets. An identical subject in different app namespaces represents different customers/wallets; no email/phone-based merge or pooled company wallet is implemented.
 
-External apps should use this sequence:
+This check covers one supplied configuration. It does not persist historical app/issuer ownership. Before app #2 uses real financial state, implement the [durable namespace registration and migration gate](https://github.com/ShenghangWang/ai-native-simulation-platform/blob/main/docs/architecture/data-ownership-and-cloud-lifecycle.md#4-multiple-applications-and-identity). Never repoint an old issuer to a different app between restarts. Product onboarding/roles are separate from wallet balances; managed signup requires the product backend's own staff authorization.
 
-```text
-POST /billing/estimate
-POST /billing/freeze
-run external AI task
-POST /billing/settle on success
-POST /billing/refund on failure
-```
+## Data ownership
 
-The app should send:
+Products own authentication, projects, project permissions, cloud manifests, physical quota enforcement, jobs and worker evidence. Shared Credits owns financial identity, balances, immutable ledger and reservations/settlement; future catalog/orders/entitlements are financial extensions. Store only opaque business references and minimal necessary financial usage metadata here. Models, equations, project files, prompts, result arrays and storage-access keys do not belong in Credits.
 
-```json
-{
-  "userId": 7,
-  "accountScope": "personal",
-  "applicationCode": "used_car_ai",
-  "functionCode": "car_bg_showroom",
-  "estimatedPoints": "30.0000",
-  "bizType": "image_generation",
-  "bizId": "used_car_task_12345",
-  "idempotencyKey": "unique-operation-key"
-}
-```
+The [canonical cross-product data/lifecycle contract](https://github.com/ShenghangWang/ai-native-simulation-platform/blob/main/docs/architecture/data-ownership-and-cloud-lifecycle.md) specifies future private object storage, product metadata schemas, quotas, purchased rights versus fulfillment, durable events, metering, closure and restore/reconciliation. Same-host operation does not authorize products to query financial tables. Keep MySQL/InnoDB and product schemas/grants isolated; current Simulation SQLite stores need no migration for this boundary.
 
-`estimatedPoints` is optional. When omitted, the credits platform uses the registered function's `default_points`. usedCarPlatform sends this field only for dynamic charging rules, such as batch visual processing where extra toggled options change the per-image price.
+## Unavailable paid routes and required future contract
 
-For tenant usage, pass `accountScope = "tenant"` and `tenantId`. The backend verifies membership through `tenant_members`.
+`/integration/*`, `/billing/*`, `/payment-orders`, `/payment-callbacks/*`, `/recharge-products`, `/admin/*` and `/agents` are **not mounted** by this server. Do not expose the legacy builders, accept browser `estimatedPoints`, run car-specific seeds or treat a legacy payment callback secret as a complete multi-app authorization/payment design.
 
-## Idempotency
+Before a paid API is introduced, derive app/payer from the authenticated scope; bind quote, business operation, hold, task, entitlement, receipt and mutation permission to it. Enforce app/payer business uniqueness independently of request retry keys; changing keys cannot duplicate a business charge. Use trusted actual usage and immutable pricing snapshots, short SQL transactions, durable outside-transaction dispatch/outbox, idempotent consumers and unknown-outcome reconciliation. Tested domain partial settlement and hold release do not implement payment refunds, paid project storage or a cloud worker.
 
-Every credit-changing request must include an `idempotencyKey`.
-
-Same key plus same request body returns the original response with:
-
-```json
-{
-  "idempotentReplay": true
-}
-```
-
-Same key plus different request body returns `409 conflict`.
-
-## Frontend Must Not Send
-
-Do not trust frontend-provided:
-
-- `amount`
-- `points`
-- `bonusPoints`
-- `commissionRate`
-- tenant permission
-- role permission
-
-The backend derives pricing from `application_functions` and `recharge_products`.
-
-## Recharge Flow
-
-```text
-GET /recharge-products
-POST /payment-orders
-payment provider callback
-POST /payment-callbacks/:channel
-```
-
-Callbacks must be signed with the configured `PAYMENT_CALLBACK_SECRET`.
-
-## Introspection
-
-```http
-GET /integration/contract
-GET /integration/applications
-GET /integration/applications/:applicationCode/functions
-```
-
-## usedCarPlatform Registration
-
-The usedCarPlatform integration uses this application code:
-
-```text
-used-car-platform
-```
-
-The repeatable setup command is:
-
-```sh
-npm run seed:used-car
-```
-
-For local smoke tests with account data:
-
-```sh
-npm run seed:used-car:demo
-```
-
-Registered used-car functions:
-
-| Function code | Default points | Usage |
-| --- | ---: | --- |
-| `showroom-light` | `30.0000` | Single exterior image generation |
-| `outdoor-scene` | `30.0000` | Single exterior image generation |
-| `road-motion` | `30.0000` | Single exterior image generation |
-| `sky-studio` | `30.0000` | Single exterior image generation |
-| `paint-refresh` | `30.0000` | Single image enhancement |
-| `light-consistency` | `30.0000` | Single image enhancement |
-| `interior-clean` | `30.0000` | Single interior image generation |
-| `interior-collage` | `30.0000` | One generated interior collage output |
-| `watermark-remove` | `30.0000` | Single image enhancement |
-| `batch-new-exterior` | `30.0000` | One exterior item in a batch task before dynamic option extras |
-| `batch-new-interior` | `30.0000` | One interior item in a batch task before dynamic option extras |
-
-These defaults mirror the current usedCarPlatform baseline. Dynamic batch option extras are sent per estimate request through `estimatedPoints`.
+Delivery remains the [B01–B07 commercial queue](https://github.com/ShenghangWang/ai-native-simulation-platform/blob/main/docs/commercial/billing-delivery.md), with the existing [B03/B05 hardening spec](tasks/B03-B05-lifecycle-financial-hardening.md). Catalog/payment/refund/entitlement/storage/worker/provider/race/restore gates are still open. Free local Simulation work must remain available through billing outages.

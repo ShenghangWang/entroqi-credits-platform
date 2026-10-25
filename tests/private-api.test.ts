@@ -36,4 +36,12 @@ describe('private service boundary', () => {
       }
     } finally { await app.close(); }
   });
+  it('rejects cross-application issuer reuse and accidental issuer changes during rotation', () => {
+    const rotated = { ...credential, token: 'b'.repeat(43) };
+    expect(() => parseCredentials(JSON.stringify([credential, { ...rotated, application: 'atlas-simulation' }]))).toThrow('Conflicting application identity namespace');
+    expect(() => parseCredentials(JSON.stringify([credential, { ...rotated, issuer: 'replacement-issuer' }]))).toThrow('Conflicting application identity namespace');
+    // Permission-limited rotation remains within the exact application namespace.
+    expect(parseCredentials(JSON.stringify([credential, { ...rotated, permissions: ['balance'] }]))).toHaveLength(2);
+    expect(parseCredentials(JSON.stringify([credential, { ...rotated, application: 'atlas-simulation', issuer: 'atlas-simulation-v1' }]))).toHaveLength(2);
+  });
 });

@@ -24,9 +24,13 @@ export function parseCredentials(raw: string): ServiceCredential[] {
         !c.permissions.length || c.permissions.some(p => !["provision", "balance", "close"].includes(p))) throw new Error("Invalid service credential");
     seen.add(c.token);
   }
-  // One authority cannot assign conflicting onboarding policies to the same namespace.
+  // Credential rotation may change tokens/permissions, never identity ownership.
+  // The DB key is (issuer, subject): sharing an issuer between applications would
+  // resolve the same customer/wallet despite different application labels.
   for (const c of values as ServiceCredential[]) {
-    if ((values as ServiceCredential[]).some(other => other.issuer === c.issuer && other.onboarding !== c.onboarding)) throw new Error("Conflicting issuer policy");
+    if ((values as ServiceCredential[]).some(other =>
+      (other.issuer === c.issuer && (other.application !== c.application || other.onboarding !== c.onboarding)) ||
+      (other.application === c.application && other.issuer !== c.issuer))) throw new Error("Conflicting application identity namespace");
   }
   return values as ServiceCredential[];
 }

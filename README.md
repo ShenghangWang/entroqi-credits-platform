@@ -1,5 +1,7 @@
 # Entroqi Credits Platform
 
+[Database/multi-app review](docs/verification/database-architecture-2026-10-25.md) and [current integration contract](docs/integration-contract.md) separate this customer API from future paid services. Products own projects/jobs; Credits owns financial state. Same-configuration app/issuer ambiguity is rejected; persistent namespace registration remains required before a second real app uses financial state.
+
 Private standalone shared billing core. One maintained main branch; per-product onboarding policies support self-service or authorized-staff provisioning. Original unmodified extraction is preserved at commit `306fbf3d41b863e3baa07bd54c99c2abba2d78db`.
 
 The standalone entry point exposes authenticated zero-balance customer provisioning, balance queries and permission-scoped guarded customer closure. Existing legacy ledger, payment and agent implementations remain in source for subsequent hardening; they are not mounted by this server. This is an integration foundation, not a live payment service.

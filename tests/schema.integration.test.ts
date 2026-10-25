@@ -44,6 +44,14 @@ async function enumColumnValues(tableName: string, columnName: string): Promise<
 }
 
 describe("phase 1 schema contract", () => {
+  it("uses InnoDB for every migrated table in the qualified database", async () => {
+    const result = await db.query<{ table_name: string; engine: string }>(`
+      select table_name, engine from information_schema.tables
+      where table_schema = database() and table_type = 'BASE TABLE'
+    `);
+    expect(result.rows.length).toBeGreaterThan(18);
+    expect(result.rows.filter(row => row.engine !== 'InnoDB')).toEqual([]);
+  });
   it("creates all MVP and phase-2-ready tables", async () => {
     const result = await db.query<{ table_name: string }>(`
       select table_name as table_name

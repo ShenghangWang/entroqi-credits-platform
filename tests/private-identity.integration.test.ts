@@ -69,3 +69,37 @@ it('database prevents a second wallet for the same owner and currency', async ()
     await expect(db.query("insert into credit_accounts (user_id, account_scope) values ($1, 'personal')", [user.insertId])).rejects.toThrow();
   } finally { await db.close(); }
 });
+
+it('three applications isolate identical subjects, rotated credentials and closure', async () => {
+  const db = createDatabase(loadEnv());
+  const namespace = randomUUID(), subject = randomUUID();
+  const credentials = ['simulation', 'atlas-simulation', 'atlas-modern-ai'].map((application, i) => ({
+    token: String(i + 1).repeat(43), application, issuer: application + '-' + namespace,
+    onboarding: 'self_service' as const, permissions: ['provision', 'balance', 'close'] as ('provision' | 'balance' | 'close')[]
+  }));
+  const rotated = { ...credentials[0]!, token: '4'.repeat(43), permissions: ['balance'] as 'balance'[] };
+  const app = await buildPrivateApp(db, [...credentials, rotated]);
+  const call = (token: string, action: string, extra = {}) => app.inject({ method: 'POST', url: '/v1/customer',
+    headers: { authorization: 'Bearer ' + token }, payload: { subject, action, ...extra } });
+  try {
+    const replies = await Promise.all(credentials.map(c => call(c.token, 'provision')));
+    expect(replies.map(r => r.statusCode)).toEqual([200, 200, 200]);
+    const customers = replies.map(r => r.json<{ customerId: string; accountId: string }>());
+    expect(new Set(customers.map(c => c.customerId)).size).toBe(3);
+    expect(new Set(customers.map(c => c.accountId)).size).toBe(3);
+    expect((await call(rotated.token, 'balance')).json()).toEqual(replies[0]!.json());
+    expect((await call(credentials[1]!.token, 'close', { issuer: credentials[0]!.issuer })).statusCode).toBe(400);
+    expect((await call(credentials[1]!.token, 'close')).statusCode).toBe(200);
+    expect((await call(credentials[1]!.token, 'provision')).statusCode).toBe(404);
+    for (const i of [0, 2]) {
+      const remaining = await call(credentials[i]!.token, 'balance');
+      expect(remaining.statusCode).toBe(200);
+      expect(remaining.json()).toEqual(replies[i]!.json());
+    }
+    const states = await db.query<{ user_id: number; status: string }>(
+      `select e.user_id, u.status from customer_external_identities e join users u on u.id=e.user_id
+       where e.subject=$1 order by e.user_id`, [subject]);
+    expect(states.rows).toHaveLength(3);
+    expect(states.rows.filter(r => r.status === 'closed')).toHaveLength(1);
+  } finally { await app.close(); await db.close(); }
+});
