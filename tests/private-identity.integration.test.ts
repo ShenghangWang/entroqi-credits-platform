@@ -53,6 +53,8 @@ it('one company subject provisions one shared wallet concurrently across three a
     expect((await call(3, 'close')).statusCode).toBe(409);
     await db.query('update credit_accounts set total_balance=0 where id=$1', [bodies[0]!.accountId]);
     expect((await call(3, 'close')).statusCode).toBe(200);
+    // A delayed app unlink after company closure cannot undo its tombstone.
+    expect((await call(1, 'unlink')).statusCode).toBe(200);
     for (const i of [0, 1, 2]) expect((await call(i, 'provision')).statusCode).toBe(404);
     const returning = (await call(0, 'provision', randomUUID())).json<{ accountId: string; customerId: string }>();
     expect(returning.accountId).not.toBe(bodies[0]!.accountId); expect(returning.customerId).not.toBe(bodies[0]!.customerId);

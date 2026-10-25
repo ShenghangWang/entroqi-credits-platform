@@ -35,7 +35,7 @@ export async function unlinkCompanyApplication(db: Database, issuer: string, sub
       (select count(*) from payment_orders where user_id=$1 and status='pending')
       ) as count`, [id, application]);
     if (Number(obligations.rows[0]?.count ?? 1) !== 0) throw new ConflictError('Resolve application financial responsibilities before unlinking');
-    await client.query("update customer_application_memberships set status='left' where application=$1 and issuer=$2 and subject=$3", [application, issuer, subject]);
+    await client.query("update customer_application_memberships set status='left' where application=$1 and issuer=$2 and subject=$3 and status='active'", [application, issuer, subject]);
     return { unlinked: true };
   });
 }
