@@ -1,6 +1,6 @@
 # Shared company identity implementation and review
 
-Date: 25 October 2026. Status: implementation/local checks complete; exact-source full CI pending. Baseline febea064bff2406f31cd54323376c88591ce8cc3. No deployed database or real financial records were accessed.
+Date: 25 October 2026; final review 26 October 2026, Asia/Shanghai. Status: implementation and exact-source full CI passed. Baseline febea064bff2406f31cd54323376c88591ce8cc3. No deployed database or real financial records were accessed.
 
 Owner requires one company registration across Simulation and future Atlas apps, with product profiles created on first use. This supersedes the prior separate-app-customer assumption; preserve isolated legacy issuers and immutable history.
 
@@ -16,6 +16,10 @@ Owner requires one company registration across Simulation and future Atlas apps,
 
 Local Node24.19.0:120 unit tests pass; types/lint/build pass after replacing untyped response assertions with explicit test response types. The added real-MySQL scenario races12 provisions across3 apps, requires one customer/wallet, verifies local unlink/rejoin and authority-only global closure, guards nonzero balances, prevents old-subject revival, preserves fresh-subject return and rejects persisted namespace reassignment. Legacy3-app issuer isolation and all prior financial tests remain. Test cleanup now includes the three additive tables before resetting legacy tables; no live cleanup script is introduced.
 
-Exact-source CI must still verify fresh/repeated migrations, all real MySQL cases, audit, Compose and Docker. These tests do not establish live merchant, paid API, shared entitlement, arbitrary scale or provider recovery qualification.
+Exact-source runtime `83003ae3d99d7b69133d2d7fd6d8ea999ff3f896` passes [full run 40210985109](https://github.com/ShenghangWang/entroqi-credits-platform/actions/runs/40210985109): **120 unit tests, 29 real MySQL integration tests**, types, lint, production build, fresh/repeated migrations, production dependency audit with zero reported advisories, both Compose configurations and Docker image build. Reviewed the actual completed job log, not only its badge. The earlier company implementation `f8272177` also passed run 40191885691 before the final review correction.
+
+Overall review found that a delayed app-unlink retry could change a company-closed membership to `left`. The wallet/customer still stayed closed, but membership state should be terminal too. Unlink now updates only active rows. The real MySQL regression repeats unlink after global closure and verifies the closed membership/customer/mapping remain closed. History and shared balance are preserved, and old-subject provision remains rejected. The namespace registry is installed once by standalone company startup; legacy isolation remains covered.
+
+The Simulation companion is qualified separately in its [review](https://github.com/ShenghangWang/ai-native-simulation-platform/blob/main/docs/verification/company-identity-2026-10-25.md). These tests do not establish live merchant, paid API, shared entitlement, arbitrary scale or provider recovery qualification. No live database, funds or customer records were accessed or migrated.
 
 Canonical identity decision and deployment contract live in the [Simulation repository](https://github.com/ShenghangWang/ai-native-simulation-platform/blob/main/docs/decisions/0022-company-identity-and-lazy-product-profiles.md); [commercial delivery](https://github.com/ShenghangWang/ai-native-simulation-platform/blob/main/docs/commercial/billing-delivery.md) remains the sole commercial queue. Product acceptance remains19/62,40.34%; no paid feature is enabled.
