@@ -13,3 +13,6 @@ For local start configure MYSQL_* and CREDITS_SERVICE_CREDENTIALS as described i
 ## Latest MVP review
 
 Runtime/dependency source c1f5c80b9f4bc2569bbf50e5ee7bdc7811b35fba passed [40043859238](https://github.com/ShenghangWang/entroqi-credits-platform/actions/runs/40043859238): 117 unit tests, 26 MySQL integration tests, types/lint/build, repeated migration, audit and Docker checks. Full local JavaScript audit reports zero known advisories after patched dependency/test-tool updates. This is dated registry evidence, not proof of zero defects. See the [financial review](docs/verification/billing-review-2026-10-24.md) and [margin policy](docs/architecture/paid-offer-margin.md); paid checkout/refunds/entitlements and actual host/provider operations remain gated.
+
+
+Native service/developer database defaults are covered by [network configuration verification](docs/verification/network-defaults-2026-10-25.md); reconstructed-source verification is pending. Canonical deployment retains its explicit internal bind and host-loopback mapping.

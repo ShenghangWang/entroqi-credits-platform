@@ -89,7 +89,7 @@ function readNumber(value: string | undefined, fallback: number): number {
 export function loadEnv(): AppEnv {
   return {
     nodeEnv: process.env.NODE_ENV ?? "development",
-    host: process.env.HOST ?? "0.0.0.0",
+    host: process.env.HOST ?? "127.0.0.1",
     port: readPort(process.env.PORT),
     logLevel: process.env.LOG_LEVEL ?? "info",
     mysql: {

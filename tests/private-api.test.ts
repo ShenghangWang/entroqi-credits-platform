@@ -1,10 +1,17 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+import { loadEnv } from '../src/config/env.js';
 import { buildPrivateApp, parseCredentials, type ServiceCredential } from '../src/private-api.js';
 import type { Database } from '../src/db/pool.js';
 const token = 'a'.repeat(43);
 const credential: ServiceCredential = { token, application: 'simulation', issuer: 'simulation-v1', onboarding: 'self_service', permissions: ['provision', 'balance'] };
 const db = { query: () => Promise.reject(new Error('Unexpected DB access')), withTransaction: () => Promise.reject(new Error('offline')), close: async () => {} } as Database;
 describe('private service boundary', () => {
+  it('defaults native service binding to loopback and preserves explicit container binding', () => {
+    try {
+      vi.stubEnv('HOST', undefined); expect(loadEnv().host).toBe('127.0.0.1');
+      vi.stubEnv('HOST', '0.0.0.0'); expect(loadEnv().host).toBe('0.0.0.0');
+    } finally { vi.unstubAllEnvs(); }
+  });
   it('requires explicit strong unique credentials and consistent issuer policy', () => {
     expect(() => parseCredentials('[]')).toThrow();
     expect(() => parseCredentials('{"token":"' + token)).toThrow(/^Invalid service credentials JSON$/);

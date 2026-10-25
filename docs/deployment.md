@@ -20,3 +20,8 @@ One main branch contains reusable core and policy configuration. Original source
 The simulation now implements its own reauthenticated lifecycle and minimal retained audit history under [decision 0019](https://github.com/ShenghangWang/ai-native-simulation-platform/blob/main/docs/decisions/0019-account-closure-and-retained-history.md). Its backend close permission is explicit; do not add it to unrelated credentials by default. Product authentication and independent anti-rollback control remain separate from this MySQL financial database. Product closure must call this private API and preserve blocked obligations; do not delete financial rows or reopen the old subject to compensate for a product-side error. A recycled email/phone cannot authorize access to old balances/history.
 
 The simulation source checkpoint and clean CI are tracked in its [closure verification](https://github.com/ShenghangWang/ai-native-simulation-platform/blob/main/docs/verification/account-closure-2026-10-24.md). Never infer deployment, merchant proof or paid readiness from the presence of that integration. Keep current financial tombstones/ledger and independently protected product lifecycle evidence across restores.
+
+
+## Private network defaults — 25 October 2026
+
+Native service defaults to HOST=127.0.0.1. Canonical deploy Compose explicitly sets HOST=0.0.0.0 inside its isolated container and publishes only 127.0.0.1:3100; MySQL has no published host port. Keep that explicit container setting. The separate developer Compose exposes MySQL only at 127.0.0.1:3310; use MYSQL_PORT=3310 for it. Sample credentials are development-only. Source defaults do not change existing configurations/services/databases. [Verification](verification/network-defaults-2026-10-25.md).
