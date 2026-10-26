@@ -20,3 +20,5 @@ Runtime/dependency source c1f5c80b9f4bc2569bbf50e5ee7bdc7811b35fba passed [40043
 
 
 Native service/developer database defaults pass [source-bound verification](docs/verification/network-defaults-2026-10-25.md) on d9bcfe3b/run 40179536866: 118 unit tests, 26 real MySQL tests, types/lint/build, repeated migrations, clean production audit, both Compose recipes and Docker. Canonical deployment retains its explicit internal bind and host-loopback mapping. Paid services remain disabled.
+
+Development and release runs follow the [private CI cost policy](docs/ci-policy.md): local checks and batched pushes, shared allowance monitoring, protected manual full verification and no automatic spending.

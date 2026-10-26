@@ -5,6 +5,10 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+# Keep every verification step; isolate manual release runs from push cancellation.
+concurrency:
+  group: credits-validation-${{ github.event_name == 'push' && github.ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'push' }}
 jobs:
   verify:
     runs-on: ubuntu-latest
@@ -29,6 +33,8 @@ jobs:
       MYSQL_PASSWORD: credits_test_only
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: '24.19.0'
