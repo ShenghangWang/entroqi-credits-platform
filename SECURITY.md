@@ -1,10 +1,10 @@
 # Security policy
 
-This repository is private. Report suspected issues privately to the repository owner; do not post credentials, customer data or exploit details in public issues. The public support/security contact must be configured and tested before launch.
+The owner authorized this reusable Credits repository to become public on28October2026. The simulation repository remains private; never copy its source, real customer projects, production databases or credentials into this repository, CI logs or artifacts. Source visibility does not expose the operational Credits API or authorize publishing a package. Report suspected issues privately to the repository owner; do not post credentials, customer data or exploit details in public issues. The public support/security contact must be configured and tested before launch.
 
 Production starts only through `src/server.ts` / `buildPrivateApp`. The historical `buildApp` and hand-written payment adapters are test-only, use caller-supplied identity fixtures, and must never be exposed as customer APIs. No paid route is currently enabled.
 
-Before release, run the locked unit, real-MySQL, browser and container checks, complete dependency audits, and `bash scripts/check-secrets.sh` from a non-shallow checkout. The pinned MIT Gitleaks CLI runs locally with redacted output and scans the current committed snapshot and Git history. Never upload private source or secret reports to an unapproved public service. A clean scan does not certify the application.
+Before release, run the locked unit, real-MySQL, browser and container checks, complete dependency audits, CodeQL JavaScript/TypeScript security-extended analysis, and `bash scripts/check-secrets.sh` from a non-shallow checkout. The pinned MIT Gitleaks CLI runs locally with redacted output and scans the current committed snapshot and Git history. Never upload private source or secret reports to an unapproved public service. Review actual open CodeQL alerts; a successful workflow alone does not mean zero findings. A clean scan does not certify the application.
 
 Critical/high findings in an enabled path block its activation. Other accepted findings need a named owner, scoped impact, compensating control and dated follow-up. Preserve audit history; investigate and rotate a leaked credential rather than merely deleting it from the current tree.
 

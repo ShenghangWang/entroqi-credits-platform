@@ -1,5 +1,11 @@
 # Public-release security review — 28 October 2026
 
+## Verified checkpoint and authorized visibility change
+
+Repaired source `44ce2a5277e71549b27a271100eac5ee9577dc70` passed [full Credits run40557685396](https://github.com/ShenghangWang/entroqi-credits-platform/actions/runs/40557685396), including committed-source/full-Git-history Gitleaks,142unit tests, real MySQL integration/repeated migrations, pricing browser workflow, dependency audit and Docker packaging. Before owner-authorized publication, all34retained Actions run logs were downloaded and scanned with redacted Gitleaks output: zero findings. Current tracked files contain no simulation runtime, archived source or database file. Those scans reduce risk; they do not establish that all sensitive content can be recognized automatically.
+
+The owner then explicitly authorized only `ShenghangWang/entroqi-credits-platform` to become public for free standard-runner Actions. The authenticated repository API confirms Credits public and `ShenghangWang/ai-native-simulation-platform` private. Production service/DB/operator endpoints remain private, no payment feature was enabled, and no license/npm-publication change was made. Future logs/artifacts here must contain fixtures only, never simulation source or real customer/production data. CodeQL security-extended analysis is added for this public repository; its initial result and open findings require review separately from the previously qualified runtime.
+
 Scope: private Credits main `f1932e39e49e0a3c7bb7d7ef22eafeca39bc0fc8` and simulation main `48d696d2b44ce894f470b740615fd7b077a3c579`. All 108 Credits and 755 simulation tracked blobs were identified from the remote Git trees; source was verified against Git blob hashes before review. This is a bounded source review and regression checkpoint, not a penetration-test certificate or complete OWASP ASVS assessment. No production host, merchant account, operational database or paid API was accessed.
 
 ## Findings and repairs

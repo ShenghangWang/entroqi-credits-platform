@@ -48,7 +48,7 @@ jobs:
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         if: always()
         with:
-          name: private-production-dependency-audit
+          name: production-dependency-audit
           path: production-dependency-audit.json
           retention-days: 7
           if-no-files-found: error
@@ -70,7 +70,7 @@ jobs:
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         if: always()
         with:
-          name: private-pricing-console-evidence
+          name: pricing-console-evidence
           path: artifacts-pricing/
           retention-days: 7
           if-no-files-found: warn
