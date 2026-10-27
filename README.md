@@ -1,6 +1,6 @@
 # Entroqi Credits Platform
 
-Source visibility: **public by owner authorization on28October2026**, so standard GitHub-hosted runner time is free. The Simulation Platform repository remains private, and its source/data must never be included here. Production Credits/MySQL/operator access stays private; this is not a deployed public billing service. No open-source license or npm publication is added by changing visibility. Storage, larger-runner and usage-policy limits remain separate.
+Source visibility: **public by owner authorization on28 October 2026**, so standard GitHub-hosted runner time is free. The Simulation Platform repository remains private, and its source/data must never be included here. Production Credits/MySQL/operator access stays private; this is not a deployed public billing service. No open-source license or npm publication is added by changing visibility. Storage, larger-runner and usage-policy limits remain separate.
 
 [28 October security review](docs/verification/public-release-security-2026-10-28.md): legacy caller-identity API/payment adapters are test-only and fail closed outside tests. Use only the authenticated private production entry point. Repaired replay/signature/configuration controls do not enable payments. See [security policy](SECURITY.md) and existing commercial gates before accepting money.
 

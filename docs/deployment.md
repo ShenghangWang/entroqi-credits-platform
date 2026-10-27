@@ -1,6 +1,6 @@
 # Same-server deployment and operations
 
-Security update28October2026: production uses only `src/server.ts` / the authenticated private API. Historical `buildApp` and payment adapters now refuse non-test execution; do not deploy example caller-ID routes or override this guard to enable purchases. Set an explicit database password of at least16characters and a dedicated non-root user. Queue length is bounded, but query/acquisition deadlines and real capacity still need qualification. Run [the security review](verification/public-release-security-2026-10-28.md), current-source/history secret scans and B04/B08 provider/restore/refund checks before affected activation.
+Security update28 October 2026: production uses only `src/server.ts` / the authenticated private API. Historical `buildApp` and payment adapters now refuse non-test execution; do not deploy example caller-ID routes or override this guard to enable purchases. Set an explicit database password of at least 16 characters and a dedicated non-root user. Queue length is bounded, but query/acquisition deadlines and real capacity still need qualification. Run [the security review](verification/public-release-security-2026-10-28.md), current-source/history secret scans and B04/B08 provider/restore/refund checks before affected activation.
 
 ## Current one-company-account configuration
 
