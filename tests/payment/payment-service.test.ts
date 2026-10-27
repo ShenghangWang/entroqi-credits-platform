@@ -2,7 +2,7 @@ import type { QueryResult, QueryResultRow } from "../types/db-result.js";
 import { describe, expect, it } from "vitest";
 import type { Database, DatabaseClient } from "../../src/db/pool.js";
 import { BadRequestError } from "../../src/domain/index.js";
-import { paymentSignature } from "../../src/payment/payment-signature.js";
+import { paymentCallbackEnvelope, paymentSignature } from "../../src/payment/payment-signature.js";
 import { PaymentService } from "../../src/payment/payment-service.js";
 
 function result<T extends QueryResultRow>(rows: T[]): QueryResult<T> {
@@ -163,7 +163,7 @@ describe("PaymentService", () => {
 
   it("marks pending orders paid and writes recharge and bonus ledger rows once", async () => {
     const rawData = { orderNo: "pay_abc", status: "paid" };
-    const sign = paymentSignature(rawData, "secret");
+    const sign = paymentSignature(paymentCallbackEnvelope({ channel: "card", orderNo: "pay_abc", notifyId: "notify-1", providerStatus: "paid", rawData }), "secret");
     const { db, queries } = makeDatabase([
       [orderRow()],
       [{ id: "2" }],
@@ -199,7 +199,7 @@ describe("PaymentService", () => {
 
   it("replays duplicate callbacks without duplicate credit transactions", async () => {
     const rawData = { orderNo: "pay_abc", status: "paid" };
-    const sign = paymentSignature(rawData, "secret");
+    const sign = paymentSignature(paymentCallbackEnvelope({ channel: "card", orderNo: "pay_abc", notifyId: "notify-1", providerStatus: "paid", rawData }), "secret");
     const { db, queries } = makeDatabase([
       [orderRow({ status: "paid", paid_at: now, notify_id: "notify-1" })],
       [],
@@ -240,6 +240,6 @@ describe("PaymentService", () => {
 it("rejects a signed callback for a different payment channel before ledger writes", async () => {
   const rawData = { orderNo: "pay_abc", status: "paid" };
   const { db, queries } = makeDatabase([[orderRow({ pay_channel: "wechat" })]]);
-  await expect(new PaymentService(db, "secret").processCallback({ channel: "card", orderNo: "pay_abc", notifyId: "notify-1", providerStatus: "paid", rawData, sign: paymentSignature(rawData, "secret"), requestHash: "hash" })).rejects.toThrow("Payment channel mismatch");
+  await expect(new PaymentService(db, "secret").processCallback({ channel: "card", orderNo: "pay_abc", notifyId: "notify-1", providerStatus: "paid", rawData, sign: paymentSignature(paymentCallbackEnvelope({ channel: "card", orderNo: "pay_abc", notifyId: "notify-1", providerStatus: "paid", rawData }), "secret"), requestHash: "hash" })).rejects.toThrow("Payment channel mismatch");
   expect(queries).toHaveLength(1);
 });

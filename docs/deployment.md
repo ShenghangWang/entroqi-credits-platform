@@ -1,5 +1,7 @@
 # Same-server deployment and operations
 
+Security update28October2026: production uses only `src/server.ts` / the authenticated private API. Historical `buildApp` and payment adapters now refuse non-test execution; do not deploy example caller-ID routes or override this guard to enable purchases. Set an explicit database password of at least16characters and a dedicated non-root user. Queue length is bounded, but query/acquisition deadlines and real capacity still need qualification. Run [the security review](verification/public-release-security-2026-10-28.md), current-source/history secret scans and B04/B08 provider/restore/refund checks before affected activation.
+
 ## Current one-company-account configuration
 
 Use migration000011 and [decision 0022](https://github.com/ShenghangWang/ai-native-simulation-platform/blob/main/docs/decisions/0022-company-identity-and-lazy-product-profiles.md). Keep the existing same-host network/backup controls. For a fresh company installation configure separate strong tokens:

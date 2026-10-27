@@ -1,0 +1,48 @@
+# Public-release security review — 28 October 2026
+
+Scope: private Credits main `f1932e39e49e0a3c7bb7d7ef22eafeca39bc0fc8` and simulation main `48d696d2b44ce894f470b740615fd7b077a3c579`. All 108 Credits and 755 simulation tracked blobs were identified from the remote Git trees; source was verified against Git blob hashes before review. This is a bounded source review and regression checkpoint, not a penetration-test certificate or complete OWASP ASVS assessment. No production host, merchant account, operational database or paid API was accessed.
+
+## Findings and repairs
+
+| ID | Finding and exposure | Severity / disposition |
+| --- | --- | --- |
+| SEC-01 | Historical `buildApp` mounts routes that accept `userId`/`currentUserId` without an authenticated principal. Production `server.ts` instead uses `buildPrivateApp`; those legacy routes were already absent from the deployed entry point. | High if exposed; latent deployment hazard. Builder now refuses non-test environments, including production process/test-option mismatch. |
+| SEC-02 | Generic test callback authenticated only `rawData`, while order/channel/status/notification were separate mutable command fields. | High if exposed. Callback now authenticates a versioned complete envelope, rejects metadata changes before DB access, and no longer accepts the old raw-body-only signature. Legacy payment service is explicitly test-only; no production merchant API is opened. |
+| SEC-03 | Normalization assigned JSON keys to `{}`, losing own `__proto__` fields and creating signature/request-fingerprint collisions. Request hashing also discarded nested business fields named `idempotencyKey`. Hex decoding accepted a valid signature followed by invalid text. | Medium integrity defect in legacy signatures and active pricing replay fingerprints. Null-prototype dictionaries preserve keys; only the top-level request key is excluded; signatures require exactly 64 hex characters. |
+| SEC-04 | Production environment could inherit the development DB password; pool queue was unbounded. | Medium configuration/availability hardening. Production rejects missing/short/default DB passwords and root user. mysql2 now limits pending connections to four times pool size and connection establishment to five seconds. This does not establish a query/acquisition deadline or a load capacity. |
+
+The deployed private service still exposes only scoped customer lifecycle/balance and catalog/operator pricing routes. No legacy provider/payment/spending routes are registered. Public simulation resolves verified session identities server-side; product roles do not grant financial administration. No balance, price, paid right or successful payment is accepted from browser assertions.
+
+## Evidence
+
+- Original local Credits suite: 135 tests passed. Repaired suite: **142 tests passed**, no failures/skips; typecheck, lint and build pass. Added tests cover quarantine, environment mismatch, unsigned metadata, prototype keys, nested replay fields, malformed signatures, DB defaults and bounded pool configuration.
+- Fresh complete lockfile audits, including development dependencies: Credits 333 total dependencies; simulation 372 total dependencies; **zero known advisories reported** by the registries at this checkpoint. Registry results do not identify application-logic vulnerabilities or guarantee absence of unknown issues.
+- Official Gitleaks v8.30.1 current-tree scans pass for both materialized sources. Its release archive was checked against the upstream release asset SHA-256 before execution. `scripts/check-secrets.sh` adds current committed snapshot and non-shallow Git-history scans to CI, with fully redacted output, no inline allow-comments and no source upload. Historical findings must be reviewed, not hidden with a broad baseline.
+- Previous simulation full run [40478510667](https://github.com/ShenghangWang/ai-native-simulation-platform/actions/runs/40478510667) is now successful, including the formerly pending account regression. This source review does not replace the final changed-source CI. New Credits MySQL/browser/container and both history-scan results must be checked on the published candidate.
+- Local Docker socket access is denied in the execution environment. Real MySQL/browser/container acceptance belongs to CI and actual deployment, not the unit doubles.
+
+## Reuse decision
+
+Keep the small existing Credits financial core and current MySQL/InnoDB boundary; a wholesale billing/database replacement is not justified by this review. Retain Fastify, mysql2, exact integer/decimal money, row locks, atomic ledger/replay writes, and simulation's Better Auth session/password primitives. They reduce custom work but are not automatic security certifications.
+
+Use provider-maintained payment code before collecting money. Alipay's official Node SDK is the first candidate for the narrow local-license checkout; configure and test response signature verification explicitly. WeChat documents signature verification for API responses and callbacks; its official tools/SDKs should govern any later integration, with supported-language and operational costs reviewed. Do not relabel an arbitrary npm WeChat package as official. The existing hand-written provider adapters omit proof checks in query/response paths and perform unbounded network I/O inside order transactions; they remain quarantined, not production-ready merely because callback signatures were repaired.
+
+TigerBeetle provides financial transaction/accounting primitives and Kill Bill provides subscription/invoice/payment infrastructure. Neither removes product authorization, fulfillment, provider verification or operational duties. Adding a separate financial database or broad subscription platform now would add integration and operational scope. Revisit only for measured requirements; no new runtime dependency was added by this review.
+
+## Required next work
+
+1. Complete the existing B04/B08 narrow CNY79 license slice: immutable server quote/order, qualified provider adapter, durable submission outside DB transactions, verified callback/query inbox, repeat-safe entitlement/license grant, customer restore and real cash refund/reconciliation. Persist unknown outcomes; never infer success from a browser return page. Owner-editable Credits prices and original purchase rights remain authoritative.
+2. Complete B03/B05 money invariants before paid usage: app/payer/job business uniqueness independent of request keys; multi-connection overspend/settle/cancel races; rollback, crash/retry and snapshot reconciliation. Current ledger is a wallet activity journal, not a demonstrated general double-entry accounting system. No broad financial or compliance certification is claimed.
+3. Qualify the real selected host: TLS/proxy header overwrite, private Credits/MySQL/firewall, dedicated DB grants, private secrets, no public Swagger or operator token page, operator access via private tunnel, restart/backup/restore, patching and security/financial event alerts. Keep short financial records and required personal data under the documented retention policy. Do not log passwords, reset URLs, bearer keys or raw sensitive payment bodies.
+4. Run a bounded authorized live/staging security test against the actual deployment before public customer accounts and payment activation. Cover account takeover/reset, cross-account and cross-app access, CSRF/XSS/import handling, abuse/cost budgets and payment replay. Fix critical/high findings before enabling affected features. An independent specialist review of the money/auth boundaries is strongly recommended before accepting funds; no service was purchased.
+
+The OWASP ASVS 5.0 stable baseline and API Security Top 10 guide these controls. A checklist alone does not make the application ASVS-compliant. Public free/local work, paid licenses, cloud storage and cloud compute have separate activation gates; an unresolved paid feature must stay visibly unavailable rather than silently using customer or company funds.
+
+## Primary references checked
+
+- [OWASP ASVS](https://owasp.org/www-project-application-security-verification-standard/) and [ASVS releases](https://github.com/OWASP/ASVS/releases).
+- [OWASP API resource consumption](https://owasp.org/API-Security/editions/2023/en/0xa4-unrestricted-resource-consumption/).
+- [Better Auth security](https://github.com/better-auth/better-auth/blob/main/docs/content/docs/reference/security.mdx).
+- [Fastify October header-validation advisory](https://github.com/fastify/fastify/security/advisories/GHSA-389g-gv7q-r4x8): installed 5.12.7 is beyond its patched 5.12.6 boundary; package audit remains necessary.
+- [Alipay official Node SDK](https://github.com/alipay/alipay-sdk-nodejs-all), [WeChat APIv3 verification](https://pay.wechatpay.cn/doc/v3/merchant/4012365342).
+- [Gitleaks](https://github.com/gitleaks/gitleaks), [TigerBeetle accounting](https://docs.tigerbeetle.com/coding/financial-accounting/), [Kill Bill](https://docs.killbill.io/latest/overview.html).

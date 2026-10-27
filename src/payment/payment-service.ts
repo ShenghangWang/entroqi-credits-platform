@@ -14,7 +14,7 @@ import {
   NotFoundError
 } from "../domain/index.js";
 import { requestHash } from "../http/request-hash.js";
-import { verifyPaymentSignature } from "./payment-signature.js";
+import { paymentCallbackEnvelope, verifyPaymentSignature } from "./payment-signature.js";
 import {
   AlipayProvider,
   type ProviderQuery,
@@ -233,6 +233,9 @@ export class PaymentService {
       }
     }
   ) {
+    if (env.nodeEnv !== "test" || process.env.NODE_ENV === "production") {
+      throw new Error("Legacy payment adapters are test-only; production requires a qualified provider integration");
+    }
     this.balanceService = new BalanceService(db);
     this.paymentEnv = env.payment ?? disabledPaymentEnv;
     this.alipay = new AlipayProvider(this.paymentEnv);
@@ -331,7 +334,7 @@ export class PaymentService {
   async processCallback(input: PaymentCallbackInput): Promise<JsonObject> {
     if (
       !verifyPaymentSignature({
-        payload: input.rawData,
+        payload: paymentCallbackEnvelope(input),
         signature: input.sign,
         secret: this.paymentCallbackSecret
       })
@@ -341,7 +344,7 @@ export class PaymentService {
     return this.processVerifiedCallback(input);
   }
 
-  async processProviderResult(input: Omit<PaymentCallbackInput, "sign" | "requestHash">) {
+  private async processProviderResult(input: Omit<PaymentCallbackInput, "sign" | "requestHash">) {
     return this.processVerifiedCallback({
       ...input,
       sign: "provider-verified",

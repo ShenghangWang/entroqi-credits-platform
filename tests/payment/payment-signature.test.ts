@@ -20,4 +20,17 @@ describe("payment callback signatures", () => {
       })
     ).toBe(false);
   });
+
+  it("rejects noncanonical hex instead of silently truncating it", () => {
+    const payload = { orderNo: "pay_1" }, secret = "secret";
+    const signature = paymentSignature(payload, secret);
+    for (const bad of [signature + "garbage", signature + "00", signature.slice(0, -1), " " + signature]) {
+      expect(verifyPaymentSignature({ payload, signature: bad, secret })).toBe(false);
+    }
+  });
+
+  it("includes own prototype-named JSON keys in signed data", () => {
+    expect(paymentSignature(JSON.parse('{"__proto__":{"paid":true}}'), "secret"))
+      .not.toBe(paymentSignature({}, "secret"));
+  });
 });

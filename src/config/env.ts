@@ -87,6 +87,13 @@ function readNumber(value: string | undefined, fallback: number): number {
 }
 
 export function loadEnv(): AppEnv {
+  // Development defaults must never silently become production DB credentials.
+  if (process.env.NODE_ENV === "production" &&
+      (!process.env.MYSQL_PASSWORD || process.env.MYSQL_PASSWORD.length < 16 ||
+       ["credits", "credits_root", "password", "local_dev_payment_secret"].includes(process.env.MYSQL_PASSWORD) ||
+       process.env.MYSQL_USER === "root")) {
+    throw new Error("Production requires a dedicated non-root database user and an explicit strong password");
+  }
   return {
     nodeEnv: process.env.NODE_ENV ?? "development",
     host: process.env.HOST ?? "127.0.0.1",

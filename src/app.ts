@@ -16,6 +16,12 @@ export type BuildAppOptions = {
 };
 
 export async function buildApp(options: BuildAppOptions): Promise<FastifyInstance> {
+  // Historical routes accept caller-supplied identities and are fixtures only.
+  // The production entry point must use buildPrivateApp; changing HOST must
+  // never turn this compatibility harness into a public billing API.
+  if (options.env.nodeEnv !== "test" || process.env.NODE_ENV === "production") {
+    throw new Error("Legacy Credits API is test-only; use the authenticated private entry point");
+  }
   const app = Fastify({
     logger:
       options.env.nodeEnv === "test"

@@ -188,6 +188,9 @@ export function createDatabase(env: AppEnv): Database {
     timezone: MYSQL_CHINA_TIME_ZONE,
     waitForConnections: true,
     connectionLimit: env.mysql.connectionLimit,
+    // Refuse overload rather than retaining an unbounded queue in process memory.
+    queueLimit: env.mysql.connectionLimit * 4,
+    connectTimeout: 5000,
     namedPlaceholders: false,
     dateStrings: false,
     decimalNumbers: false

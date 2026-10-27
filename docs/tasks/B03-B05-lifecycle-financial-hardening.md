@@ -1,5 +1,7 @@
 # B03/B05 — account lifecycle and financial invariants
 
+28October security checkpoint: [source review](../verification/public-release-security-2026-10-28.md) adds test-only legacy API/payment quarantine, complete callback command binding, prototype-safe replay fingerprints, canonical signature input, production DB credential checks and a bounded pool queue/connect timeout. Retain the pending business-identity, query/acquisition deadline, real race/recovery/load and provider SDK qualification gates below. These repairs do not enable paid routes or complete B03/B04/B05.
+
 Current owner correction25October: [one company identity](https://github.com/ShenghangWang/ai-native-simulation-platform/blob/main/docs/decisions/0022-company-identity-and-lazy-product-profiles.md) replaces separate-product customer/login assumptions. Explicit company issuer sharing, persisted namespace/app bindings, app-local unlink and authority-only company closure are implemented under [review](../verification/company-identity-2026-10-25.md). The older before-app2 namespace-registry TODO below is superseded by migration000011. Future app resource-closure adapters, OIDC for distinct origins, catalog/entitlements, paid spending and actual provider/restore/load gates remain separate; legacy identities are not automatically merged.
 
 Owner authorization: 24 October 2026. Dependencies: private identity adapter/extraction checkpoint. This task repairs reusable core and documents the legacy application's bug; it does not enable live paid routes or change numerical simulation scope.

@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 
 type Serializable = null | boolean | number | string | Serializable[] | { [key: string]: Serializable };
 
-function normalize(value: unknown): Serializable {
+function normalize(value: unknown, root = true): Serializable {
   if (value === null) return null;
 
   if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
@@ -10,17 +10,18 @@ function normalize(value: unknown): Serializable {
   }
 
   if (Array.isArray(value)) {
-    return value.map((item) => normalize(item));
+    return value.map((item) => normalize(item, false));
   }
 
   if (typeof value === "object") {
-    const normalized: Record<string, Serializable> = {};
+    // Preserve own JSON keys such as __proto__ instead of invoking a setter.
+    const normalized: Record<string, Serializable> = Object.create(null) as Record<string, Serializable>;
 
     for (const [key, child] of Object.entries(value).sort(([left], [right]) =>
       left.localeCompare(right)
     )) {
-      if (key !== "idempotencyKey" && child !== undefined) {
-        normalized[key] = normalize(child);
+      if (!(root && key === "idempotencyKey") && child !== undefined) {
+        normalized[key] = normalize(child, false);
       }
     }
 

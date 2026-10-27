@@ -10,7 +10,7 @@ import {
   InsufficientCreditsError
 } from "../src/domain/index.js";
 import { requestHash } from "../src/http/request-hash.js";
-import { paymentSignature } from "../src/payment/payment-signature.js";
+import { paymentCallbackEnvelope, paymentSignature } from "../src/payment/payment-signature.js";
 import { PaymentService } from "../src/payment/payment-service.js";
 
 const env = {
@@ -330,7 +330,7 @@ async function paidCallback(input: {
     notifyId: input.notifyId,
     providerStatus: "paid" as const,
     rawData,
-    sign: paymentSignature(rawData, callbackSecret)
+    sign: paymentSignature(paymentCallbackEnvelope({ channel: "card", orderNo: input.orderNo, notifyId: input.notifyId, providerStatus: "paid", rawData }), callbackSecret)
   };
 
   return input.payment.processCallback({

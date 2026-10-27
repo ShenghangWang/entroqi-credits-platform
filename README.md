@@ -1,5 +1,7 @@
 # Entroqi Credits Platform
 
+[28 October security review](docs/verification/public-release-security-2026-10-28.md): legacy caller-identity API/payment adapters are test-only and fail closed outside tests. Use only the authenticated private production entry point. Repaired replay/signature/configuration controls do not enable payments. See [security policy](SECURITY.md) and existing commercial gates before accepting money.
+
 Current owner correction: [one company account across apps](docs/verification/company-identity-2026-10-25.md), verified on `83003ae3` with 120 unit and 29 real MySQL tests plus full build/audit/migration/Compose/Docker checks. Explicit company-mode credentials share a stable issuer/subject and financial customer/wallet; namespaces and app bindings persist. Products own lazy profiles/roles and may unlink their own membership. Only the company identity authority can close the global financial identity. Legacy isolated issuers remain supported; no automatic merge or paid enablement.
 
 [Database/multi-app review](docs/verification/database-architecture-2026-10-25.md) and [current integration contract](docs/integration-contract.md) separate this customer API from future paid services. Products own projects/jobs; Credits owns financial state. The earlier separate-app assumption is superseded by company mode and persisted namespace registration; isolated legacy issuers retain strict separation.

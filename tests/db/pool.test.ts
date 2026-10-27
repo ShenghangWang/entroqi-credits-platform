@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import mysql from "mysql2/promise";
 import { createDatabase } from "../../src/db/pool.js";
 import type { AppEnv } from "../../src/config/env.js";
 
@@ -36,6 +37,13 @@ const testEnv: AppEnv = {
 };
 
 describe("createDatabase", () => {
+  it("bounds queued connections and connection establishment under database pressure", async () => {
+    const db = createDatabase(testEnv);
+    expect(mysql.createPool).toHaveBeenCalledWith(expect.objectContaining({
+      connectionLimit: 10, queueLimit: 40, connectTimeout: 5000
+    }));
+    await db.close();
+  });
   it("closes the pool only once when close is called repeatedly", async () => {
     mocks.end.mockClear();
     const db = createDatabase(testEnv);
