@@ -28,12 +28,15 @@ try {
   await page.getByLabel('计入 AI API 成本',{exact:true}).check();await page.locator('#aiCurrency').selectOption('USD');await page.locator('#aiFx').fill('7');
   for(const [id,value] of Object.entries({inputTokens:'1000000',cachedInputTokens:'200000',cacheWriteTokens:'100000',outputTokens:'500000',inputPerMillion:'2',cachedPerMillion:'0.5',cacheWritePerMillion:'3',outputPerMillion:'8',requests:'2',requestFee:'0.01'}))await page.locator('#'+id).fill(value);
   await page.locator('#retailPrice').fill('99.00');await page.waitForFunction(()=>document.getElementById('results').textContent.includes('40.74')&&document.getElementById('results').textContent.includes('51.27'));
+  await page.getByRole('button',{name:'添加费用',exact:true}).click();
+  await page.getByLabel('费用名称 1',{exact:true}).fill('计算与存储');await page.getByLabel('数量 1',{exact:true}).fill('10');await page.getByLabel('单价 1',{exact:true}).fill('1.5');
+  await page.waitForFunction(()=>document.getElementById('results').textContent.includes('61.74')&&document.getElementById('results').textContent.includes('36.27'));
   await page.getByRole('button',{name:'保存新价格版本',exact:true}).click();await page.waitForFunction(()=>document.getElementById('catalogStatus').textContent.includes('新价格草稿已保存'));
   page.once('dialog',dialog=>dialog.accept('Market feedback changed future price to 99'));
   await page.getByRole('button',{name:'发布为对外参考价',exact:true}).first().click();
   await page.waitForFunction(()=>document.getElementById('history').textContent.includes('版本 2 · ¥99.00 / v1个人授权 · 当前参考价'));
   const updated=await (await fetch(address+'/v1/catalog/'+encodeURIComponent(productCode),{headers:{Authorization:'Bearer '+serviceToken}})).json();assert.equal(updated.amountMinor,'9900');assert.notEqual(updated.priceVersionId,original.priceVersionId);assert.equal(updated.commerceEnabled,false);assert.equal(updated.eligibleForSale,false);
-  assert.ok((await page.locator('#history').textContent()).includes('¥79.00'));checks.push('actual MySQL price history retains 79 while published metadata changes to 99; live AI cost/FX/fees match independent 40.74 and 51.27 references; below-policy offer is flagged');
+  assert.ok((await page.locator('#history').textContent()).includes('¥79.00'));checks.push('actual MySQL price history retains 79 while published metadata changes to 99; live AI cost/FX/fees match independent 40.74 and 51.27 references; labeled expense rows add an independent15-CNY storage/compute cost and yield36.27 contribution; below-policy offer is flagged');
   await page.locator('#retailPrice').fill('1.00');await page.waitForFunction(()=>document.getElementById('warning').textContent.includes('无法覆盖'));
   await page.screenshot({path:'artifacts-pricing/pricing-console.png',fullPage:true});
   await page.getByRole('button',{name:'断开并清除令牌',exact:true}).click();assert.equal(await page.locator('#results').textContent(),'');
