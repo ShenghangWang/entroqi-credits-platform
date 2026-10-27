@@ -58,4 +58,16 @@ jobs:
         env:
           MYSQL_ROOT_PASSWORD: root_test_only
           CREDITS_SERVICE_CREDENTIALS: '[{"token":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","application":"simulation","issuer":"simulation-v1","onboarding":"self_service","permissions":["provision","balance"]}]'
+      - name: Verify real operator price and margin browser workflow
+        timeout-minutes: 4
+        run: |
+          bash scripts/install-ci-browser.sh
+          npm run verify:pricing-ui
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        if: always()
+        with:
+          name: private-pricing-console-evidence
+          path: artifacts-pricing/
+          retention-days: 7
+          if-no-files-found: warn
       - run: docker build -t entroqi-credits:test .

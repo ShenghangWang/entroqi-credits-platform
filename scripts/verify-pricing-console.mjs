@@ -1,0 +1,43 @@
+import { chromium } from 'playwright';
+import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { buildPrivateApp } from '../dist/private-api.js';
+import { loadEnv } from '../dist/config/env.js';
+import { createDatabase } from '../dist/db/pool.js';
+const db = createDatabase(loadEnv()), token = 'o'.repeat(43), serviceToken = 's'.repeat(43);
+const productCode = 'simulation:browser-' + randomUUID();
+const app = await buildPrivateApp(db, [{ token: serviceToken, application: 'simulation', issuer: 'pricing-browser-fixture', onboarding: 'self_service', permissions: ['catalog'] }], [{ id: 'pricing-browser-owner', token, applications: ['simulation'], permissions: ['read','write','publish'] }]);
+const checks = [], errors = [], externalRequests = []; let browser, page, passed = false, failure = null;
+await mkdir('artifacts-pricing', { recursive: true });
+try {
+  const address = await app.listen({ host: '127.0.0.1', port: 0 });
+  browser = await chromium.launch({ headless: true, args: ['--no-sandbox', '--disable-gpu'] });
+  const context = await browser.newContext({ viewport: { width: 1360, height: 1000 } });
+  await context.route('**/*', route => { if(new URL(route.request().url()).origin===address) return route.continue();externalRequests.push(route.request().url());return route.abort(); });
+  page = await context.newPage();page.setDefaultTimeout(15000);page.on('pageerror', error=>errors.push(error.message));
+  await page.goto(address+'/v1/pricing');await page.getByLabel('定价操作员令牌').fill(token);await page.getByRole('button',{name:'连接并测算',exact:true}).click();
+  await page.waitForFunction(()=>document.getElementById('results').textContent.includes('72.21'));
+  assert.equal(await page.getByLabel('定价操作员令牌').inputValue(),'');checks.push('operator-only actual server calculator renders exact 79-yuan contribution and clears credential input');
+  await page.getByLabel('产品代码',{exact:true}).fill(productCode);
+  await page.getByLabel('成本来源、日期、币种及判断依据').fill('Browser fixture explicit costs and support assumptions; not a live offer.');
+  await page.getByRole('button',{name:'保存新价格版本',exact:true}).click();await page.waitForFunction(()=>document.getElementById('catalogStatus').textContent.includes('新价格草稿已保存'));
+  page.once('dialog',dialog=>dialog.accept('Reviewed initial reference price'));
+  await page.getByRole('button',{name:'发布为对外参考价',exact:true}).click();await page.waitForFunction(()=>document.getElementById('history').textContent.includes('当前参考价'));
+  const original=await (await fetch(address+'/v1/catalog/'+encodeURIComponent(productCode),{headers:{Authorization:'Bearer '+serviceToken}})).json();assert.equal(original.amountMinor,'7900');
+  await page.getByLabel('计入 AI API 成本',{exact:true}).check();await page.locator('#aiCurrency').selectOption('USD');await page.locator('#aiFx').fill('7');
+  for(const [id,value] of Object.entries({inputTokens:'1000000',cachedInputTokens:'200000',cacheWriteTokens:'100000',outputTokens:'500000',inputPerMillion:'2',cachedPerMillion:'0.5',cacheWritePerMillion:'3',outputPerMillion:'8',requests:'2',requestFee:'0.01'}))await page.locator('#'+id).fill(value);
+  await page.locator('#retailPrice').fill('99.00');await page.waitForFunction(()=>document.getElementById('results').textContent.includes('40.74')&&document.getElementById('results').textContent.includes('51.27'));
+  await page.getByRole('button',{name:'保存新价格版本',exact:true}).click();await page.waitForFunction(()=>document.getElementById('catalogStatus').textContent.includes('新价格草稿已保存'));
+  page.once('dialog',dialog=>dialog.accept('Market feedback changed future price to 99'));
+  await page.getByRole('button',{name:'发布为对外参考价',exact:true}).first().click();
+  await page.waitForFunction(()=>document.getElementById('history').textContent.includes('版本 2 · ¥99.00 / v1个人授权 · 当前参考价'));
+  const updated=await (await fetch(address+'/v1/catalog/'+encodeURIComponent(productCode),{headers:{Authorization:'Bearer '+serviceToken}})).json();assert.equal(updated.amountMinor,'9900');assert.notEqual(updated.priceVersionId,original.priceVersionId);assert.equal(updated.commerceEnabled,false);assert.equal(updated.eligibleForSale,false);
+  assert.ok((await page.locator('#history').textContent()).includes('¥79.00'));checks.push('actual MySQL price history retains 79 while published metadata changes to 99; live AI cost/FX/fees match independent 40.74 and 51.27 references; below-policy offer is flagged');
+  await page.locator('#retailPrice').fill('1.00');await page.waitForFunction(()=>document.getElementById('warning').textContent.includes('无法覆盖'));
+  await page.screenshot({path:'artifacts-pricing/pricing-console.png',fullPage:true});
+  await page.getByRole('button',{name:'断开并清除令牌',exact:true}).click();assert.equal(await page.locator('#results').textContent(),'');
+  await page.reload();assert.equal(await page.locator('#token').inputValue(),'');assert.equal(await page.locator('#results').textContent(),'');checks.push('losses remain visible; disconnect/reload does not retain credentials or calculated results');
+  assert.deepEqual(errors,[]);assert.deepEqual(externalRequests,[]);passed=true;
+} catch(error){failure=String(error).slice(0,1500);if(page)await page.screenshot({path:'artifacts-pricing/failure.png',fullPage:true}).catch(()=>{});throw error;}
+finally{await writeFile('artifacts-pricing/report.json',JSON.stringify({status:passed?'passed':'failed',checks,errors,externalRequests,failure},null,2)+'\n');await browser?.close();await app.close();await db.close();}

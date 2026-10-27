@@ -1,3 +1,4 @@
+import { registerPricingRoutes, type PricingOperator } from "./pricing/routes.js";
 import { closeCustomer } from "./customer/close-customer.js";
 import { ConflictError } from "./domain/errors.js";
 import { createHash, timingSafeEqual } from "node:crypto";
@@ -9,7 +10,7 @@ export type ServiceCredential = {
   token: string; application: string; issuer: string;
   onboarding: "self_service" | "managed";
   identityMode?: 'isolated' | 'company';
-  permissions: ("provision" | "balance" | "close" | "unlink")[];
+  permissions: ("provision" | "balance" | "close" | "unlink" | "catalog")[];
 };
 export function parseCredentials(raw: string): ServiceCredential[] {
   let values: unknown;
@@ -24,7 +25,7 @@ export function parseCredentials(raw: string): ServiceCredential[] {
         typeof c.issuer !== "string" || !/^[A-Za-z0-9:/._-]{1,100}$/.test(c.issuer) ||
         !["self_service", "managed"].includes(c.onboarding) || !Array.isArray(c.permissions) ||
         ![undefined, 'isolated', 'company'].includes(c.identityMode) ||
-        !c.permissions.length || c.permissions.some(p => !["provision", "balance", "close", "unlink"].includes(p))) throw new Error("Invalid service credential");
+        !c.permissions.length || c.permissions.some(p => !["provision", "balance", "close", "unlink", "catalog"].includes(p))) throw new Error("Invalid service credential");
     if (c.identityMode === 'company' && (c.onboarding !== 'self_service' ||
         c.permissions.includes('close') && c.application !== 'company-identity' ||
         c.application === 'company-identity' && c.permissions.some(p => p !== 'close'))) throw new Error('Company closure belongs to the identity authority');
@@ -43,7 +44,7 @@ export function parseCredentials(raw: string): ServiceCredential[] {
   return values as ServiceCredential[];
 }
 const digest = (value: string) => createHash("sha256").update(value).digest();
-export async function buildPrivateApp(db: Database, supplied: ServiceCredential[]) {
+export async function buildPrivateApp(db: Database, supplied: ServiceCredential[], pricingOperators: PricingOperator[] = []) {
   const credentials = parseCredentials(JSON.stringify(supplied)).map(c => ({ ...c, hash: digest(c.token) }));
   if (credentials.some(c => c.identityMode === 'company')) await registerIdentityNamespaces(db, credentials);
   const app = Fastify({ logger: false, bodyLimit: 4096, requestTimeout: 10_000, ajv: { customOptions: { removeAdditional: false } } });
@@ -109,6 +110,7 @@ export async function buildPrivateApp(db: Database, supplied: ServiceCredential[
       return reply.code(503).send({ error: "billing_unavailable" });
     }
   });
+  registerPricingRoutes(app, db, pricingOperators, credentials);
   await app.ready();
   return app;
 }

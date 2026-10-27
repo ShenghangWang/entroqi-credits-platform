@@ -426,7 +426,46 @@ MIGRATIONS.push({ name: "000011_company_identity_namespaces", statements: [
   ) ENGINE=InnoDB`
 ] });
 
+MIGRATIONS.push({ name: "000012_operator_pricing_catalog", statements: [
+  `CREATE TABLE IF NOT EXISTS pricing_products (
+    product_code VARCHAR(130) CHARACTER SET ascii COLLATE ascii_bin PRIMARY KEY,
+    billing_type ENUM('one_time','monthly','usage') NOT NULL,
+    revision BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    published_price_id CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NULL
+  ) ENGINE=InnoDB`,
+  `CREATE TABLE IF NOT EXISTS pricing_versions (
+    id CHAR(36) CHARACTER SET ascii COLLATE ascii_bin PRIMARY KEY,
+    product_code VARCHAR(130) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    revision BIGINT UNSIGNED NOT NULL,
+    payload JSON NOT NULL,
+    created_by VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    UNIQUE KEY pricing_revision_unique (product_code,revision),
+    FOREIGN KEY (product_code) REFERENCES pricing_products(product_code)
+  ) ENGINE=InnoDB`,
+  `CREATE TABLE IF NOT EXISTS pricing_actions (
+    actor_id VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    idempotency_key CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    request_hash CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    response JSON NULL,
+    created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    PRIMARY KEY(actor_id,idempotency_key)
+  ) ENGINE=InnoDB`,
+  `CREATE TABLE IF NOT EXISTS pricing_publications (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    product_code VARCHAR(130) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    price_version_id CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    previous_price_id CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NULL,
+    actor_id VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    note VARCHAR(1000) NOT NULL,
+    created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    FOREIGN KEY(product_code) REFERENCES pricing_products(product_code),
+    FOREIGN KEY(price_version_id) REFERENCES pricing_versions(id)
+  ) ENGINE=InnoDB`
+] });
+
 const DOWN_TABLES = [
+  "pricing_publications", "pricing_actions", "pricing_versions", "pricing_products",
   "customer_application_memberships",
   "customer_application_namespaces",
   "customer_identity_namespaces",
