@@ -15,9 +15,8 @@
     "db:migrate": "node -r dotenv/config scripts/migrate-mysql.cjs",
     "db:rollback": "node -r dotenv/config scripts/migrate-mysql.cjs --down",
     "db:status": "node -r dotenv/config scripts/db-status.cjs",
-    "seed:used-car": "node -r dotenv/config scripts/seed-used-car-platform.cjs",
-    "seed:used-car:demo": "node -r dotenv/config scripts/seed-used-car-platform.cjs --with-demo-account",
-    "verify:pricing-ui": "node scripts/verify-pricing-console.mjs"
+    "verify:pricing-ui": "node scripts/verify-pricing-console.mjs",
+    "company:register": "node -r dotenv/config scripts/register-company-apps.cjs"
   },
   "engines": {
     "node": ">=20.11.0"

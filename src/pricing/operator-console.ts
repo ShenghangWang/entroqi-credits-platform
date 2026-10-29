@@ -24,6 +24,13 @@ export const pricingConsoleScript = String.raw`'use strict';
 const el = id => document.getElementById(id);
 let token = '', sessionGeneration = 0, generation = 0, timer, controller, currentHistory = { revision: 0, publishedPriceId: null }, currentProduct = '', calculation = null;
 const value = id => el(id).value.trim();
+// The company console selects a fixed registered product without embedding a
+// staff credential. Atlas prices are intentionally blank until staff choose.
+const selectedProduct = new URLSearchParams(location.hash.slice(1)).get('product');
+if (selectedProduct && /^[a-z0-9-]{1,48}:[a-z0-9-]{1,80}$/.test(selectedProduct)) {
+ el('productCode').value=selectedProduct;
+ if(selectedProduct.startsWith('atlas-')){el('retailPrice').value='';el('productLabel').value=selectedProduct.startsWith('atlas-ai:')?'Modern AI Atlas':'Computational Modeling and Simulation Atlas';el('unit').value='';}
+}
 const status = text => { el('status').textContent = text; };
 function percent(id){const text=value(id);if(!/^(0|[1-9]\d{0,2})(\.\d{1,2})?$/.test(text))throw new Error('请填写有效的百分比（最多两位小数）');return Math.round(Number(text)*100);}
 function readExpenses(){return Array.from(el('expenses').children).map(row=>Object.fromEntries(Array.from(row.querySelectorAll('[data-field]')).map(input=>[input.dataset.field,input.value.trim()])));}

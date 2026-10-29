@@ -1,0 +1,5 @@
+[
+  {"application":"simulation","name":"AI Native Simulation Platform","productKey":"modeler-v1-local","catalogId":null,"accessKey":"modeler-v1-local","basePath":"/simulation/","priceProductCode":"simulation:modeler-v1-local"},
+  {"application":"atlas-simulation","name":"Computational Modeling and Simulation Atlas","productKey":"cms_atlas","catalogId":"cms","accessKey":"cms_atlas_access","basePath":"/atlas-simulation/","priceProductCode":"atlas-simulation:access"},
+  {"application":"atlas-ai","name":"Modern AI Atlas","productKey":"modern_ai_atlas","catalogId":"modern-ai","accessKey":"ai_atlas_access","basePath":"/atlas-ai/","priceProductCode":"atlas-ai:access"}
+]

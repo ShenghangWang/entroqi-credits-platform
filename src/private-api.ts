@@ -1,4 +1,5 @@
 import { registerPricingRoutes, type PricingOperator } from "./pricing/routes.js";
+import { registerCompanyRoutes, type PlatformOperator } from './company/routes.js';
 import { closeCustomer } from "./customer/close-customer.js";
 import { ConflictError } from "./domain/errors.js";
 import { createHash, timingSafeEqual } from "node:crypto";
@@ -44,7 +45,7 @@ export function parseCredentials(raw: string): ServiceCredential[] {
   return values as ServiceCredential[];
 }
 const digest = (value: string) => createHash("sha256").update(value).digest();
-export async function buildPrivateApp(db: Database, supplied: ServiceCredential[], pricingOperators: PricingOperator[] = []) {
+export async function buildPrivateApp(db: Database, supplied: ServiceCredential[], pricingOperators: PricingOperator[] = [], platformOperators: PlatformOperator[] = []) {
   const credentials = parseCredentials(JSON.stringify(supplied)).map(c => ({ ...c, hash: digest(c.token) }));
   if (credentials.some(c => c.identityMode === 'company')) await registerIdentityNamespaces(db, credentials);
   const app = Fastify({ logger: false, bodyLimit: 4096, requestTimeout: 10_000, ajv: { customOptions: { removeAdditional: false } } });
@@ -111,6 +112,7 @@ export async function buildPrivateApp(db: Database, supplied: ServiceCredential[
     }
   });
   registerPricingRoutes(app, db, pricingOperators, credentials);
+  registerCompanyRoutes(app, db, credentials, platformOperators);
   await app.ready();
   return app;
 }

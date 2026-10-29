@@ -1,5 +1,7 @@
 # Same-server deployment and operations
 
+Company registration update29October2026: apply additive migration000013 to a backed-up company database, then run `npm run company:register` before starting canonical `entroqi-company-v1` app clients. A fresh company installation must use its own clean database, never a former-employer schema. Configure all three product credentials and optional staff `CREDITS_PLATFORM_OPERATORS` as documented in [company console setup](company-console.md). The private company console and credential-scoped application metadata are now mounted alongside the existing customer/pricing routes. Historical route inventories below describe earlier checkpoints; payment/legacy builders remain unmounted. Registration does not enable commerce or product entitlements.
+
 Security update28 October 2026: production uses only `src/server.ts` / the authenticated private API. Historical `buildApp` and payment adapters now refuse non-test execution; do not deploy example caller-ID routes or override this guard to enable purchases. Set an explicit database password of at least 16 characters and a dedicated non-root user. Queue length is bounded, but query/acquisition deadlines and real capacity still need qualification. Run [the security review](verification/public-release-security-2026-10-28.md), current-source/history secret scans and B04/B08 provider/restore/refund checks before affected activation.
 
 ## Current one-company-account configuration

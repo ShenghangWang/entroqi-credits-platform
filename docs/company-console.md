@@ -1,0 +1,27 @@
+# Company applications and operator console
+
+29 October 2026. Follow [the reviewed integration plan](company-integration-plan.md). This is the company's private service, not the historical employer console.
+
+## Installation and registration
+
+Create a clean, separately granted Entroqi database. Never point this installation at a former-employer database or copy its users, identities, prices, wallets or financial records. Back up existing company data before migrations, then run `npm run db:migrate` and `npm run company:register` using the private environment for that database. Migration000013 adds `company_application_products` without modifying financial history. The registration command inserts three company apps and immutable product/catalog/access mappings; repeats are idempotent. It refuses unknown app records or changed mappings rather than deleting, relabeling or merging them. An existing incompatible namespace requires a reviewed explicit migration. Preserve old history in its owning system; removal from the company's active installation does not mean dropping someone else's records.
+
+`src/company/applications.json` is the reviewed registration manifest. `company-identity` is an authority credential, not a fourth sold product. Simulation retains its `modeler-v1-local` license product and approved79CNY policy; this registration does not fabricate a cost-evidenced published price. Atlas prices, access duration, preview depth and refund policy remain undecided. A registered price product identifier may exist before a price.
+
+Configure distinct strong product tokens for `simulation`, `atlas-simulation`, `atlas-ai`, each with issuer `entroqi-company-v1`, `identityMode:company`, `onboarding:self_service` and permissions `provision,balance,unlink,catalog`. Keep the separate `company-identity` credential limited to `close`. Startup validates canonical company product registrations and the existing durable namespace ownership. Tokens may rotate without changing issuer/application. Do not put service credentials in browsers.
+
+## Staff access
+
+`CREDITS_PLATFORM_OPERATORS` is a JSON array of `{id,token,applications}`. Each ID must be unique and stable for its staff identity; each token must be a dedicated43–128character URL-safe random credential, distinct from product/authority credentials. Each scope must be one of the three registered applications. Example shape: `[{"id":"company-owner","token":"GENERATE_A_PRIVATE_TOKEN","applications":["simulation","atlas-simulation","atlas-ai"]}]`. The short placeholder deliberately fails validation; generate the real secret privately. An empty array leaves the console/routes absent.
+
+Open `/v1/platform` through loopback or a trusted local tunnel. The shell contains no customer data or token. Enter the staff token; it stays in page memory and request headers and is cleared from its input. Disconnect removes the token/data; reloading requires reconnection. No external scripts, telemetry or browser storage is used. CSP, no-store and no-referrer headers apply. Anonymous/product/pricing-only tokens cannot read company staff data.
+
+The console lists registered app mappings, configured product credentials, price publication status, scoped company customer/wallet membership records and app-attributed company financial history. These are bounded50-row cursor pages. It never reads an employer database or customer contact/password/session fields. It does not create mandatory Developer/Admin/Agent roles for product customers. Staff actions do not grant product access. The global company wallet balance can be visible to a scoped operator/customer integration while membership details/transactions remain app-scoped.
+
+`GET /v1/platform/data?section=overview|customers|transactions|prices` uses the staff credential's fixed scopes; there is no caller-selected application or role. Customers support `cursor=<last customer ID>`; transactions use the last transaction ID. No account deletion, financial adjustment, payment, settlement, entitlement or application registration mutation is mounted in this staff UI. Deployments must retain private network access and staff credential discipline; adding staff write workflows needs separate authorization/audit controls.
+
+## Product integration
+
+An app credential with catalog permission may read `GET /v1/application`, with no caller-supplied app parameter. It returns the app's registered issuer, product/catalog/access keys, website path, price product code and explicit `commerceEnabled:false,paidAccessEnabled:false`. Customer provisioning/balance/unlink remain the existing strict authenticated `/v1/customer` contract. Published prices are app-scoped via `/v1/catalog/<product-code>`. Pricing staff are separately configured with `CREDITS_PRICING_OPERATORS`; scope them explicitly to all three products as needed. Company console pricing links select a product, never transfer a credential. Atlas price inputs stay blank until staff choose a price/unit.
+
+Both Atlases use their backend-only adapter in the Atlas repository and resolve the company session before customer access. Same-origin hosted session wiring, product profiles/roles, actual checkout/refunds, entitlement issuance and protected paid content are not activated by this registration. The identity fixture in local integration evidence is explicitly a fixture, while Credits HTTP/MySQL are real. A shared wallet, positive balance, app membership or price is never accepted as paid access.

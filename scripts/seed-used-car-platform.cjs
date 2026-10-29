@@ -389,6 +389,9 @@ async function findOrCreateCreditAccount(client, input) {
 }
 
 async function main() {
+  if (process.env.NODE_ENV !== 'test' || process.env.CREDITS_ENABLE_LEGACY_SEED !== 'test_fixture_only') {
+    throw new Error('Retired legacy fixture seed. Use npm run company:register for Entroqi applications');
+  }
   const withDemoAccount =
     process.argv.includes("--with-demo-account") ||
     process.env.USED_CAR_SEED_DEMO_ACCOUNT === "true";

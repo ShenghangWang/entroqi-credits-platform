@@ -3,12 +3,15 @@ import { buildPrivateApp, parseCredentials } from "./private-api.js";
 import { loadEnv } from "./config/env.js";
 import { createDatabase } from "./db/pool.js";
 import { registerIdentityNamespaces } from './customer/identity-namespaces.js';
+import { CompanyRegistry } from './company/registry.js';
+import { parsePlatformOperators } from './company/routes.js';
 
 const env = loadEnv();
 const credentials = parseCredentials(process.env.CREDITS_SERVICE_CREDENTIALS ?? "[]");
 const db = createDatabase(env);
+await new CompanyRegistry(db).validateCredentials(credentials);
 if (!credentials.some(c => c.identityMode === 'company')) await registerIdentityNamespaces(db, credentials);
-const app = await buildPrivateApp(db, credentials, parsePricingOperators(process.env.CREDITS_PRICING_OPERATORS ?? "[]"));
+const app = await buildPrivateApp(db, credentials, parsePricingOperators(process.env.CREDITS_PRICING_OPERATORS ?? "[]"), parsePlatformOperators(process.env.CREDITS_PLATFORM_OPERATORS ?? '[]'));
 let shutdownPromise: Promise<void> | null = null;
 
 async function shutdown(signal: string): Promise<void> {

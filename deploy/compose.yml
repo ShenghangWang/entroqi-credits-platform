@@ -11,6 +11,7 @@ services:
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Set a unique database password}
       CREDITS_SERVICE_CREDENTIALS: ${CREDITS_SERVICE_CREDENTIALS:?Set application credentials}
       CREDITS_PRICING_OPERATORS: ${CREDITS_PRICING_OPERATORS:-[]}
+      CREDITS_PLATFORM_OPERATORS: ${CREDITS_PLATFORM_OPERATORS:-[]}
     ports: ["127.0.0.1:3100:3000"]
     depends_on:
       mysql: {condition: service_healthy}

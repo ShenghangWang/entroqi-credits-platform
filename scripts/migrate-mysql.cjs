@@ -491,6 +491,22 @@ const DOWN_TABLES = [
   "schema_migrations"
 ];
 
+MIGRATIONS.push({
+  name: "000013_company_application_products",
+  statements: [`CREATE TABLE IF NOT EXISTS company_application_products (
+    application_code VARCHAR(100) PRIMARY KEY,
+    issuer VARCHAR(100) NOT NULL,
+    product_key VARCHAR(100) NOT NULL UNIQUE,
+    catalog_id VARCHAR(100) NULL UNIQUE,
+    access_key VARCHAR(100) NOT NULL UNIQUE,
+    base_path VARCHAR(160) NOT NULL UNIQUE,
+    price_product_code VARCHAR(160) NOT NULL UNIQUE,
+    created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    CONSTRAINT company_application_products_app_fk FOREIGN KEY (application_code) REFERENCES applications (code) ON DELETE RESTRICT
+  ) ENGINE=InnoDB`]
+});
+DOWN_TABLES.unshift("company_application_products");
+
 const MIGRATION_NAMES = MIGRATIONS.map((migration) => migration.name);
 
 function mysqlConfig() {
