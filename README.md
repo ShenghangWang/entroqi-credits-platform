@@ -2,7 +2,7 @@
 
 Company setup (29 October 2026): [integration plan and ownership review](docs/company-integration-plan.md). Use a clean Entroqi database, run `npm run db:migrate` then `npm run company:register`. This registers `simulation`, `atlas-simulation` and `atlas-ai` as separate products under one company identity. The two Atlases have independent catalog/access/price keys. Registration never imports historical employer users or creates credits, purchases or entitlements. Former-employer fixture seeds are retired from company commands and refuse non-test execution.
 
-Configure private `CREDITS_PLATFORM_OPERATORS` for the company console at `/v1/platform` (also `/` and `/back-office`). Its read-only company app/customer/wallet/transaction/price views use the actual financial database and explicit per-app staff scopes. App metadata at authenticated `GET /v1/application` derives only from the product service credential. Pricing editing remains separately authorized at `/v1/pricing`. No standalone username/password store or historical employer frontend/backend is used. [Setup and limits](docs/company-console.md).
+Configure private `CREDITS_PLATFORM_OPERATORS` and `CREDITS_CONSOLE_DIRECTORY` to reuse the original full Credits Vue/ECharts back office at `/back-office` (`/v1/platform` redirects). The original dashboards, charts, tables and optional Developer/Admin/Agent mechanisms are retained; company data comes from scoped service adapters. Operator credentials exchange for short-lived HttpOnly sessions. Regular product signup remains independent of agents, which default off. Unconfigured identity/payment/settlement mutations remain disabled. Pricing, the calculator and monthly/version-license/trial controls are integrated at `/back-office/pricing`, using explicit staff pricing permissions and the same login. `/v1/pricing` redirects there; its old token-entry shell is deleted. [Setup and limits](docs/company-console.md), [owner-directed reuse](docs/full-back-office-reuse.md). Developer lockout now has a protected, audited server recovery command with automatic old-session invalidation: [recovery runbook](docs/developer-account-recovery.md). Verified owner email plus an independently stored recovery code can recover the owner credential after protected enrollment; [email recovery setup and activation](docs/owner-email-recovery.md).
 
 Source visibility: **public by owner authorization on28 October 2026**, so standard GitHub-hosted runner time is free. The Simulation Platform repository remains private, and its source/data must never be included here. Production Credits/MySQL/operator access stays private; this is not a deployed public billing service. No open-source license or npm publication is added by changing visibility. Storage, larger-runner and usage-policy limits remain separate.
 
@@ -22,7 +22,11 @@ Checks: `npm ci --ignore-scripts`, `npm run typecheck`, `npm run lint`, `npm tes
 
 For local start configure MYSQL_* and CREDITS_SERVICE_CREDENTIALS as described in deployment instructions, migrate, then `npm run dev`. Do not start the legacy app builder as a public service.
 
-## Latest MVP review
+## Current finance implementation
+
+See the [30October owner workflow and release gates](docs/first-web-release-readiness.md), [offer contract](docs/flexible-offers-and-console.md) and [current verification](docs/verification/flexible-finance-2026-10-30.md). No final business price/model has been selected and no live payment adapter is enabled.
+
+## Earlier MVP review
 
 Runtime/dependency source c1f5c80b9f4bc2569bbf50e5ee7bdc7811b35fba passed [40043859238](https://github.com/ShenghangWang/entroqi-credits-platform/actions/runs/40043859238): 117 unit tests, 26 MySQL integration tests, types/lint/build, repeated migration, audit and Docker checks. Full local JavaScript audit reports zero known advisories after patched dependency/test-tool updates. This is dated registry evidence, not proof of zero defects. See the [financial review](docs/verification/billing-review-2026-10-24.md) and [margin policy](docs/architecture/paid-offer-margin.md); paid checkout/refunds/entitlements and actual host/provider operations remain gated.
 

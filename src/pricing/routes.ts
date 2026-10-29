@@ -4,7 +4,6 @@ import type { Database } from "../db/pool.js";
 import { DomainError } from "../domain/errors.js";
 import { PricingCatalog, pricingApplication, type DraftPrice } from "./catalog.js";
 import { calculateCostScenario } from "./cost-calculator.js";
-import { pricingConsoleHtml, pricingConsoleScript } from "./operator-console.js";
 
 export interface PricingOperator { id: string; token: string; applications: string[]; permissions: ("read" | "write" | "publish")[] }
 export interface CatalogCredential { token: string; application: string; permissions: readonly string[] }
@@ -47,15 +46,12 @@ export function registerPricingRoutes(app: FastifyInstance, db: Database, operat
       return reply.code(503).send({ error: "pricing_unavailable" });
     }
   };
-  const headers = { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer", "Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'" };
   if (checked.length) {
-    app.get("/v1/pricing", (_request, reply) => reply.headers(headers).type("text/html; charset=utf-8").send(pricingConsoleHtml));
-    app.get("/v1/pricing/console.js", (_request, reply) => reply.headers(headers).type("application/javascript; charset=utf-8").send(pricingConsoleScript));
     app.post("/v1/pricing/calculate", { bodyLimit: 32768, preHandler: guard("read") }, (request, reply) => execute(() => calculateCostScenario(request.body), reply));
     app.get<{ Params: { productCode: string } }>("/v1/pricing/products/:productCode", { preHandler: guard("read") }, (request, reply) => execute(() => catalog.history(request.params.productCode), reply));
     app.post<{ Body: DraftPrice & { idempotencyKey: string } }>("/v1/pricing/versions", { bodyLimit: 32768, preHandler: guard("write"), schema: { body: { type: "object", additionalProperties: false,
       required: ["productCode", "label", "billingType", "unit", "price", "expectedRevision", "scenario", "validUntil", "evidenceNote", "idempotencyKey"],
-      properties: { productCode: { type: "string" }, label: { type: "string" }, billingType: { enum: ["one_time", "monthly", "usage"] }, unit: { type: "string" }, price: { type: "string" }, expectedRevision: { type: "integer", minimum: 0 }, scenario: { type: "object" }, validUntil: { type: "integer" }, evidenceNote: { type: "string" }, idempotencyKey: { type: "string" } } } } }, (request, reply) => execute(() => {
+      properties: { productCode: { type: "string" }, label: { type: "string" }, billingType: { enum: ["one_time", "monthly", "usage"] }, unit: { type: "string" }, price: { type: "string" }, expectedRevision: { type: "integer", minimum: 0 }, scenario: { type: "object" }, validUntil: { type: "integer" }, evidenceNote: { type: "string" }, terms: { type: "object" }, idempotencyKey: { type: "string" } } } } }, (request, reply) => execute(() => {
       const { idempotencyKey, ...draft } = request.body; return catalog.createDraft(caller(request)!.id, idempotencyKey, draft);
     }, reply));
     app.post<{ Params: { productCode: string }; Body: { priceVersionId: string; expectedPublishedId: string | null; note: string; idempotencyKey: string } }>("/v1/pricing/products/:productCode/publish", { preHandler: guard("publish") }, (request, reply) => execute(() => {
@@ -71,4 +67,11 @@ export function registerPricingRoutes(app: FastifyInstance, db: Database, operat
     if (!client) return reply.code(401).send({ error: "unauthorized" });
     if (!client.permissions.includes("catalog") || client.application !== pricingApplication(request.params.productCode)) return reply.code(403).send({ error: "forbidden" });
   } }, (request, reply) => execute(() => catalog.published(request.params.productCode), reply));
+  app.get<{ Params: { productCode: string } }>("/v1/offers/:productCode", { onRequest: async (request, reply) => {
+    const header = request.headers.authorization;
+    if (typeof header !== "string" || !/^Bearer [A-Za-z0-9_-]{43,128}$/.test(header)) return reply.code(401).send({ error: "unauthorized" });
+    const client = credentials.find(c => timingSafeEqual(digest(c.token), digest(header.slice(7))));
+    if (!client) return reply.code(401).send({ error: "unauthorized" });
+    if (!client.permissions.includes("catalog") || client.application !== pricingApplication(request.params.productCode)) return reply.code(403).send({ error: "forbidden" });
+  } }, (request, reply) => execute(() => catalog.offer(request.params.productCode), reply));
 }

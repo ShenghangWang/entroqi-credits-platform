@@ -7,7 +7,7 @@ const service = { token: "s".repeat(43), application: "simulation", issuer: "pri
 const operator = { id: "owner", token: "o".repeat(43), applications: ["simulation"], permissions: ["read", "write", "publish"] as ("read" | "write" | "publish")[] };
 const db: Database = { query: () => Promise.reject(new Error("No database read expected")), withTransaction: () => Promise.reject(new Error("No financial write expected")), close: () => Promise.resolve() };
 describe("private pricing access", () => {
-  it("calculates with an operator identity, blocks application credentials and malformed roles, and serves no external scripts", async () => {
+  it("calculates with an operator identity, blocks application credentials and malformed roles, without retaining a separate calculator shell", async () => {
     const app = await buildPrivateApp(db, [service], [operator]);
     try {
       const call = (token: string, payload: unknown) => app.inject({ method: "POST", url: "/v1/pricing/calculate", headers: { authorization: "Bearer " + token, "content-type": "application/json" }, payload: JSON.stringify(payload) });
@@ -16,9 +16,9 @@ describe("private pricing access", () => {
       expect((await call(operator.token, { ...scenario(), role: "owner" })).statusCode).toBe(400);
       expect((await app.inject({ url: "/v1/pricing/products/another-app:license", headers: { authorization: "Bearer " + operator.token } })).statusCode).toBe(403);
       expect((await app.inject({ url: "/v1/catalog/another-app:license", headers: { authorization: "Bearer " + service.token } })).statusCode).toBe(403);
-      const html = await app.inject({ url: "/v1/pricing" }); expect(html.statusCode).toBe(200);
-      expect(html.body).toContain("定价与利润测算"); expect(html.body).not.toContain(operator.token);
-      expect(html.headers["content-security-policy"]).toContain("script-src 'self'");
+      const html = await app.inject({ url: "/v1/pricing" }); expect(html.statusCode).toBe(404);
+      expect(html.body).not.toContain(operator.token);
+      expect((await app.inject({url:"/v1/pricing/console.js"})).statusCode).toBe(404);
     } finally { await app.close(); }
   });
   it("keeps the console closed without explicit operator configuration", async () => {

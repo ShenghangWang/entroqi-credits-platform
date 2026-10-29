@@ -507,6 +507,50 @@ MIGRATIONS.push({
 });
 DOWN_TABLES.unshift("company_application_products");
 
+MIGRATIONS.push({
+  name: "000014_commercial_offer_contracts",
+  statements: [
+    `CREATE TABLE IF NOT EXISTS commercial_trials (
+      application VARCHAR(100) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+      issuer VARCHAR(100) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+      subject VARCHAR(191) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+      price_version_id CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+      started_at BIGINT UNSIGNED NOT NULL, expires_at BIGINT UNSIGNED NOT NULL,
+      snapshot JSON NOT NULL, PRIMARY KEY(application,issuer,subject),
+      FOREIGN KEY(price_version_id) REFERENCES pricing_versions(id)
+    ) ENGINE=InnoDB`,
+    `CREATE TABLE IF NOT EXISTS commercial_quotes (
+      id CHAR(36) CHARACTER SET ascii COLLATE ascii_bin PRIMARY KEY,
+      application VARCHAR(100) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+      issuer VARCHAR(100) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+      subject VARCHAR(191) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+      price_version_id CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+      snapshot JSON NOT NULL, expires_at BIGINT UNSIGNED NOT NULL,
+      created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+      FOREIGN KEY(price_version_id) REFERENCES pricing_versions(id),
+      INDEX commercial_quote_subject(application,issuer,subject)
+    ) ENGINE=InnoDB`,
+    `CREATE TABLE IF NOT EXISTS commercial_grants (
+      id CHAR(36) CHARACTER SET ascii COLLATE ascii_bin PRIMARY KEY,
+      quote_id CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL UNIQUE,
+      provider VARCHAR(40) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+      payment_id VARCHAR(160) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+      status ENUM('active','refunded') NOT NULL, snapshot JSON NOT NULL,
+      created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+      FOREIGN KEY(quote_id) REFERENCES commercial_quotes(id),
+      UNIQUE KEY commercial_provider_payment(provider,payment_id)
+    ) ENGINE=InnoDB`,
+    `CREATE TABLE IF NOT EXISTS commercial_payment_events (
+      provider VARCHAR(40) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+      event_id VARCHAR(160) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+      request_hash CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+      response JSON NULL, created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+      PRIMARY KEY(provider,event_id)
+    ) ENGINE=InnoDB`
+  ]
+});
+DOWN_TABLES.unshift('commercial_payment_events','commercial_grants','commercial_quotes','commercial_trials');
+
 const MIGRATION_NAMES = MIGRATIONS.map((migration) => migration.name);
 
 function mysqlConfig() {

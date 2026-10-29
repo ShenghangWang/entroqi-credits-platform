@@ -4,36 +4,22 @@ import type { Database } from '../db/pool.js';
 import type { ServiceCredential } from '../private-api.js';
 import { DomainError } from '../domain/errors.js';
 import { PricingCatalog } from '../pricing/catalog.js';
-import { CompanyRegistry, companyApplications, COMPANY_ISSUER } from './registry.js';
-import { platformHtml, platformScript } from './console.js';
+import { CompanyRegistry, COMPANY_ISSUER } from './registry.js';
+import { registerBackOfficeRoutes } from '../back-office/routes.js';
 
-export interface PlatformOperator { id: string; token: string; applications: string[] }
-export function parsePlatformOperators(raw: string): PlatformOperator[] {
-  let input: unknown;
-  try { input = JSON.parse(raw); } catch { throw new Error('Invalid platform operators JSON'); }
-  if (!Array.isArray(input) || input.length > 16) throw new Error('Invalid platform operators');
-  const ids = new Set<string>(), tokens = new Set<string>();
-  for (const row of input as PlatformOperator[]) {
-    if (!row || Object.keys(row).sort().join(',') !== 'applications,id,token' ||
-      typeof row.id !== 'string' || !/^[A-Za-z0-9_-]{1,64}$/.test(row.id) || ids.has(row.id) ||
-      typeof row.token !== 'string' || !/^[A-Za-z0-9_-]{43,128}$/.test(row.token) || tokens.has(row.token) ||
-      !Array.isArray(row.applications) || !row.applications.length || new Set(row.applications).size !== row.applications.length ||
-      row.applications.some(code => !companyApplications.some(app => app.application === code))) throw new Error('Invalid platform operator');
-    ids.add(row.id); tokens.add(row.token);
-  }
-  return input as PlatformOperator[];
-}
+import { parsePlatformOperators, type PlatformOperator } from '../back-office/operators.js';
+import { createOperatorSource } from '../back-office/operator-source.js';
+export { parsePlatformOperators, type PlatformOperator } from '../back-office/operators.js';
 const digest = (text: string) => createHash('sha256').update(text).digest();
 function bearer<T extends { token: string }>(request: FastifyRequest, entries: T[]) {
   const header = request.headers.authorization;
   if (typeof header !== 'string' || !/^Bearer [A-Za-z0-9_-]{43,128}$/.test(header)) return undefined;
   return entries.find(entry => timingSafeEqual(digest(entry.token), digest(header.slice(7))));
 }
-export function registerCompanyRoutes(app: FastifyInstance, db: Database, credentials: ServiceCredential[], supplied: PlatformOperator[]) {
-  const operators = parsePlatformOperators(JSON.stringify(supplied));
-  if (operators.some(operator => credentials.some(credential => credential.token === operator.token))) throw new Error('Platform operator credentials must be separate from application credentials');
+export async function registerCompanyRoutes(app: FastifyInstance, db: Database, credentials: ServiceCredential[], supplied: PlatformOperator[], operatorFile?: string, reservedTokens: string[] = []) {
+  const source = createOperatorSource(parsePlatformOperators(JSON.stringify(supplied)), operatorFile, [...credentials.map(item => item.token), ...reservedTokens]);
+  const operators = await source.read();
   const registry = new CompanyRegistry(db), catalog = new PricingCatalog(db);
-  const headers = { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer', 'Content-Security-Policy': "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'" };
   const execute = async (operation: () => unknown, reply: import('fastify').FastifyReply) => {
     reply.header('Cache-Control', 'no-store');
     try { return await operation(); }
@@ -49,17 +35,20 @@ export function registerCompanyRoutes(app: FastifyInstance, db: Database, creden
     if (Object.keys(request.query as object).length) return reply.code(400).send({ error: 'bad_request' });
   } }, (request, reply) => execute(() => registry.application(bearer(request, credentials)!.application), reply));
   if (!operators.length) return;
-  app.get('/', (_request, reply) => reply.redirect('/v1/platform'));
-  app.get('/back-office', (_request, reply) => reply.redirect('/v1/platform'));
-  app.get('/v1/platform', (_request, reply) => reply.headers(headers).type('text/html; charset=utf-8').send(platformHtml));
-  app.get('/v1/platform/console.js', (_request, reply) => reply.headers(headers).type('application/javascript; charset=utf-8').send(platformScript));
+  registerBackOfficeRoutes(app, db, source);
+  const verified = new WeakMap<FastifyRequest, PlatformOperator>();
   app.get<{ Querystring: { section?: string; cursor?: string } }>('/v1/platform/data', { onRequest: async (request, reply) => {
-    if (!bearer(request, operators)) return reply.code(401).send({ error: 'unauthorized' });
+    let current: PlatformOperator[];
+    try { current = await source.read(); } catch { return reply.code(503).send({ error: 'staff_credentials_unavailable' }); }
+    const operator = bearer(request, current);
+    if (!operator) return reply.code(401).send({ error: 'unauthorized' });
+    verified.set(request, operator);
+    if (operator.role === 'agent') return reply.code(403).send({ error: 'Use the scoped agent back-office session' });
     if (Object.keys(request.query).some(key => !['section', 'cursor'].includes(key)) ||
       !['overview', 'customers', 'transactions', 'prices'].includes(request.query.section ?? 'overview') ||
       request.query.cursor !== undefined && (!/^\d{1,16}$/.test(request.query.cursor) || !Number.isSafeInteger(Number(request.query.cursor)))) return reply.code(400).send({ error: 'bad_request' });
   } }, (request, reply) => execute(async () => {
-    const caller = bearer(request, operators)!, section = request.query.section ?? 'overview';
+    const caller = verified.get(request)!, section = request.query.section ?? 'overview';
     const applications = await registry.applications(caller.applications);
     const scopes = applications.map(item => item.application);
     if (!scopes.length) return { section, applications: [], customers: [], transactions: [], nextAfter: null, nextBefore: null, commerceEnabled: false };

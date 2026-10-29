@@ -6,3 +6,9 @@ coverage/
 npm-debug.log*
 
 artifacts-pricing/
+
+# Never commit operator secrets, recovery staging receipts or audit exports.
+secrets/
+security-private/
+staff-operators*.json*
+recovered-credential*.json

@@ -11,7 +11,7 @@ const credentials = parseCredentials(process.env.CREDITS_SERVICE_CREDENTIALS ?? 
 const db = createDatabase(env);
 await new CompanyRegistry(db).validateCredentials(credentials);
 if (!credentials.some(c => c.identityMode === 'company')) await registerIdentityNamespaces(db, credentials);
-const app = await buildPrivateApp(db, credentials, parsePricingOperators(process.env.CREDITS_PRICING_OPERATORS ?? "[]"), parsePlatformOperators(process.env.CREDITS_PLATFORM_OPERATORS ?? '[]'));
+const app = await buildPrivateApp(db, credentials, parsePricingOperators(process.env.CREDITS_PRICING_OPERATORS ?? "[]"), parsePlatformOperators(process.env.CREDITS_PLATFORM_OPERATORS ?? '[]'), process.env.CREDITS_PLATFORM_OPERATORS_FILE);
 let shutdownPromise: Promise<void> | null = null;
 
 async function shutdown(signal: string): Promise<void> {

@@ -8,6 +8,7 @@ import { buildPrivateApp, type ServiceCredential } from '../src/private-api.js';
 import { CompanyRegistry, companyApplications, COMPANY_ISSUER } from '../src/company/registry.js';
 import { PricingCatalog } from '../src/pricing/catalog.js';
 import { scenario } from './pricing-fixtures.js';
+import type { BackOfficeData } from '../src/back-office/data.js';
 
 const require = createRequire(import.meta.url);
 const { registerCompanyApplications } = require('../scripts/register-company-apps.cjs') as { registerCompanyApplications: (connection: Connection) => Promise<unknown> };
@@ -86,5 +87,51 @@ it('publishing one Atlas reference price never prices or unlocks the other Atlas
     const data = (await app.inject({ url: '/v1/platform/data?section=prices', headers: auth(owner.token) })).json<{ applications: { application: string; priceStatus: string; paidAccessEnabled: boolean }[] }>();
     expect(data.applications.find(row => row.application === 'atlas-ai')).toMatchObject({ priceStatus: 'unpriced', paidAccessEnabled: false });
     expect(data.applications.find(row => row.application === 'atlas-simulation')).toMatchObject({ priceStatus: 'reference_only', paidAccessEnabled: false });
+  } finally { await app.close(); }
+});
+
+it('feeds the original full console real scoped totals, chart events, customer summaries and ledger insights', async () => {
+  const app = await buildPrivateApp(db, credentials, [], [owner, aiOnly]);
+  try {
+    const subject = randomUUID();
+    const provision = async (index: number) => {
+      const result = await app.inject({ method: 'POST', url: '/v1/customer', headers: auth(credentials[index]!.token), payload: { subject, action: 'provision' } });
+      expect(result.statusCode).toBe(200);
+      return result.json<{ customerId: string; accountId: string }>();
+    };
+    const customer = await provision(0); await provision(2);
+    const application = async (code: string) => (await db.query<{ id: number }>('select id from applications where code=$1', [code])).rows[0]!.id;
+    const aiId = await application('atlas-ai'), simulationId = await application('simulation');
+    // Disposable reporting fixtures, never money mutations in the demo database.
+    for (const [applicationId, type, points] of [[aiId, 'recharge', '100'], [aiId, 'settle', '25'], [aiId, 'freeze', '25'], [simulationId, 'recharge', '40']]) {
+      await db.query("insert into credit_transactions(user_id,account_id,application_id,txn_type,points,balance_before,balance_after,biz_type) values($1,$2,$3,$4,$5,0,0,'reporting-fixture')", [customer.customerId, customer.accountId, applicationId, type, points]);
+    }
+    const session = async (operator: typeof owner) => {
+      const response = await app.inject({ method: 'POST', url: '/api/v1/auth/login', headers: { origin: 'http://127.0.0.1:3100' }, payload: { username: operator.id, password: operator.token } });
+      expect(response.statusCode).toBe(200);
+      return { cookie: String(response.headers['set-cookie']).split(';')[0]! };
+    };
+    const allHeaders = await session(owner), aiHeaders = await session(aiOnly);
+    const all = await app.inject({ url: '/api/v1/platform/dashboard', headers: allHeaders });
+    expect(all.statusCode).toBe(200);
+    expect(all.json()).toMatchObject({ data: { metrics: { platformApplicationCount: 3, todayRechargedCredits: 140, todayConsumedCredits: 25 } } });
+    const ai = (await app.inject({ url: '/api/v1/platform/dashboard', headers: aiHeaders })).json<{ data: Awaited<ReturnType<BackOfficeData['dashboard']>> }>();
+    expect(ai.data.metrics).toMatchObject({ platformApplicationCount: 1, todayRechargedCredits: 100, todayConsumedCredits: 25 });
+    expect(ai.data.trends.every(event => event.applicationCode === 'atlas-ai')).toBe(true);
+    expect(ai.data.trends).toHaveLength(2); // Freeze never doubles consumption.
+    const overview = await app.inject({ url: '/api/v1/credits/admin/overview', headers: aiHeaders });
+    expect(overview.statusCode).toBe(200);
+    expect(overview.body).not.toMatch(/password|email|phone|token/);
+    const profile = overview.json<{ data: Awaited<ReturnType<BackOfficeData['overview']>> }>().data.customerProfiles.find(row => row.userId === customer.customerId)!;
+    expect(Number(profile.totalConsumedCredits)).toBe(25); expect(Number(profile.totalTopUpCredits)).toBe(100);
+    const ledger = await app.inject({ url: '/api/v1/platform/transactions?page=1&pageSize=2', headers: aiHeaders });
+    const ledgerData = ledger.json<{ data: Awaited<ReturnType<BackOfficeData['ledger']>> }>().data;
+    expect(ledger.statusCode).toBe(200);
+    expect(ledgerData.transactions).toHaveLength(2);
+    expect(ledgerData.total).toBe(3);
+    expect(Number(ledgerData.transactionInsights.topCreditConsumers[0]!.consumedCredits)).toBe(25);
+    expect(Number(ledgerData.transactionInsights.functionUsageDistribution[0]!.usageCount)).toBe(1);
+    expect((await app.inject({ url: '/api/v1/platform/transactions?applicationCode=simulation', headers: aiHeaders })).statusCode).toBe(400);
+    expect((await app.inject({ method: 'POST', url: '/api/v1/platform/users', headers: { ...allHeaders, origin: 'http://127.0.0.1:3100' }, payload: {} })).statusCode).toBe(409);
   } finally { await app.close(); }
 });
