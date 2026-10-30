@@ -1,16 +1,19 @@
+import { validateSubscriptionTerms,type SubscriptionTerms } from './subscription-terms.js';
 import { BadRequestError } from '../domain/errors.js';
-export interface OfferTerms {
+export interface LegacyOfferTerms {
   schemaVersion: 1;
   model: 'monthly' | 'version_license';
   licensedVersion: string | null;
   trial: { enabled: boolean; days: number };
   renewal: 'manual';
 }
+export type OfferTerms = LegacyOfferTerms | SubscriptionTerms;
 /** Business settings are immutable terms of a price revision, never global
  * switches applied retroactively to an existing customer's accepted contract. */
 export function validateOfferTerms(value: unknown, billingType: string): OfferTerms {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new BadRequestError('Choose the product billing and trial terms');
-  const row=value as OfferTerms;
+  if((value as {schemaVersion?:unknown}).schemaVersion===2){if(!['monthly','subscription'].includes(billingType))throw new BadRequestError('Subscription billing type required');return validateSubscriptionTerms(value);}
+  const row=value as LegacyOfferTerms;
   if (Object.keys(row).sort().join(',')!=='licensedVersion,model,renewal,schemaVersion,trial' || row.schemaVersion!==1 ||
       !['monthly','version_license'].includes(row.model) || row.renewal!=='manual' ||
       billingType!==(row.model==='monthly'?'monthly':'one_time') ||

@@ -6,7 +6,7 @@ import { loadEnv } from '../src/config/env.js';
 import { createDatabase } from '../src/db/pool.js';
 import { buildPrivateApp, type ServiceCredential } from '../src/private-api.js';
 import { CompanyRegistry, companyApplications, COMPANY_ISSUER } from '../src/company/registry.js';
-import { PricingCatalog } from '../src/pricing/catalog.js';
+import { SubscriptionCatalog } from '../src/pricing/subscription-catalog.js';
 import { scenario } from './pricing-fixtures.js';
 import type { BackOfficeData } from '../src/back-office/data.js';
 
@@ -77,13 +77,13 @@ it('all three apps share one wallet while memberships, staff data scopes and ser
 });
 it('publishing one Atlas reference price never prices or unlocks the other Atlas', async () => {
   const app = await buildPrivateApp(db, credentials, [priceOperator], [owner]);
-  const catalog = new PricingCatalog(db), productCode = 'atlas-simulation:access';
+  const catalog = new SubscriptionCatalog(db), productCode = 'atlas-simulation:access';
   try {
-    const draft = await catalog.createDraft('fixture-owner', randomUUID(), { productCode, label: 'Fixture reference only', unit: 'fixture access', billingType: 'one_time', price: '19.00', expectedRevision: 0, scenario: scenario({ retailPrice: '19.00' }), validUntil: Date.now() + 86400000, evidenceNote: 'Synthetic integration fixture; not an owner-approved price' });
-    await catalog.publish('fixture-owner', randomUUID(), productCode, String(draft.priceVersionId), null, 'Fixture reference publication');
-    expect((await app.inject({ url: '/v1/catalog/' + productCode, headers: auth(credentials[1]!.token) })).json()).toMatchObject({ amountMinor: '1900', commerceEnabled: false });
+    const draft = await catalog.createDraft('fixture-owner', randomUUID(), { productCode, label: 'Fixture reference only', unit: 'fixture access', billingType: 'subscription',terms:{schemaVersion:2,model:'subscription',intervalMonths:1,available:true,trial:{enabled:false,days:0},renewal:'manual'},price: '19.00', expectedRevision: 0, scenario: scenario({ retailPrice: '19.00' }), validUntil: Date.now() + 86400000, evidenceNote: 'Synthetic integration fixture; not an owner-approved price' });
+    await catalog.publish('fixture-owner', randomUUID(), productCode,1,String(draft.priceVersionId), null, 'Fixture reference publication');
+    expect((await app.inject({ url: '/v1/catalog/' + productCode, headers: auth(credentials[1]!.token) })).json()).toMatchObject({plans:[{amountMinor:'1900',terms:{intervalMonths:1}}],commerceEnabled:false});
     expect((await app.inject({ url: '/v1/catalog/' + productCode, headers: auth(credentials[2]!.token) })).statusCode).toBe(403);
-    expect((await app.inject({ url: '/v1/catalog/atlas-ai:access', headers: auth(credentials[2]!.token) })).statusCode).toBe(404);
+    expect((await app.inject({ url: '/v1/catalog/atlas-ai:access', headers: auth(credentials[2]!.token) })).json()).toMatchObject({plans:[]});
     const data = (await app.inject({ url: '/v1/platform/data?section=prices', headers: auth(owner.token) })).json<{ applications: { application: string; priceStatus: string; paidAccessEnabled: boolean }[] }>();
     expect(data.applications.find(row => row.application === 'atlas-ai')).toMatchObject({ priceStatus: 'unpriced', paidAccessEnabled: false });
     expect(data.applications.find(row => row.application === 'atlas-simulation')).toMatchObject({ priceStatus: 'reference_only', paidAccessEnabled: false });

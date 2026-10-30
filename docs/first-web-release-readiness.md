@@ -1,38 +1,36 @@
-# First web release: finance handoff,30October2026
+# First web release: subscription finance handoff,30October2026
 
-The owner has not chosen a final price, billing model or trial policy. The clean company database therefore has three applications and no published commercial offers. The original full Credits back office is the only finance UI. Open `/back-office`, then **定价与收费方案**. `/v1/platform` and `/v1/pricing` are compatibility redirects; their obsolete panels are deleted.
+The owner selected monthly, quarterly, yearly and two-year subscriptions, removing new permanent/version-license sales. Final prices, enabled periods and trial policy remain undecided. The clean company database has three apps and no published commercial offers. The original full Credits back office is the only finance UI: `/back-office/pricing` (**定价与收费方案**). `/v1/platform` and `/v1/pricing` redirect; their obsolete panels are deleted. Optional agents remain preserved and off by default.
 
 ## Owner and manager workflow
 
-1. Select Simulation Platform, Simulation Atlas or Modern AI Atlas. The two Atlases are separate products and purchase rights, although customer identity and wallet are shared.
-2. Enter a candidate CNY price; choose monthly/manual renewal or a lifetime license for one exact software version/Atlas edition. Current app identifiers are Simulation `v1` and Atlas `2026.10-demo.1`. Future versions need their own specified rights. Lifetime excludes all future upgrades, unlimited hosting, compute, AI and support.
-3. Choose free trial on/off and, if on,1–365days. Thirty days is an editable suggestion. Viewing a price never starts a trial; a formal trial requires an explicit authenticated action after hosted activation. Trial expiry never charges a card.
-4. Enter per-charge-unit labor, supplier/compute/storage/trial/AI costs, rates, FX, payment/tax/refund reserves and volume/fixed-cost assumptions. The existing server calculator computes exact costs, contribution, margin, profit and break-even. These are forecasts, not actual revenue. A paid quote/trial requires current eligible cost evidence, including a positive labor allocation under the existing policy.
-5. Save an immutable draft. Review its model, version, trial, costs and change reason, then explicitly publish. Apps read current safe terms through their own backend; caches are bounded to ten seconds. Publication alone does not open payments.
+1. Choose Simulation Platform, Simulation Atlas or Modern AI Atlas. The Atlases are separate apps and purchase rights with a shared company identity.
+2. Choose monthly, quarterly, yearly or two-year. Enter the **total CNY price for that full1/3/12/24calendar-month period**, independently from other periods/apps. New purchases do not require a licensed software version.
+3. Set availability and optional free trial (off or1–365days). Thirty days is an editable suggestion. Trial eligibility is once per company identity/app across all periods. Viewing prices never starts a trial; expiry never charges automatically.
+4. Use the existing itemized calculator for supplier/compute/storage/trial/AI costs, labor, FX, fees/tax/refund reserves, volume and fixed-cost assumptions. Enter costs for the selected full period. Forecasts are not recognized revenue or normalized MRR. Eligible quotes require current approved cost evidence.
+5. **仅保存草稿** saves without applying changes. **审核并发布价格** opens a review showing app, period, total and availability. Supply a reason, tick the confirmation and click **确认发布价格并生效**. The server checks permissions, immutable revision, retry key and expected published head. Apps refresh published metadata within their ten-second cache.
+6. To remove a period, use **停售此周期方案**, review, and **确认停售并生效**. Canceling or merely saving never withdraws it. The remaining periods keep their own prices. Re-enable through another reviewed publication. No purchased record is deleted.
+7. **客户订阅记录** lists real per-customer app, interval, paid total, start/end and status, with scoped pagination. An empty installation honestly shows no contracts.
 
-Publication changes future offers. Existing version licenses, paid monthly periods, accepted quotes and started trials retain their original snapshots. A new price, version, unlink/rejoin or offer toggle cannot restart trial eligibility. Staff need explicit read/write/publish pricing permissions for their own app scopes. Optional agents remain preserved and off by default; they cannot edit pricing.
+Publication affects future offers. Each verified purchase stores its accepted immutable price/terms, company issuer+subject, app, exact CNY amount, interval and UTC dates in MySQL. Calendar renewal retains its original day across short months/leap years; early renewal queues after paid coverage. Refunds stop the affected right. Price changes or withdrawals cannot shorten existing paid periods or restart trials. Staff need explicit read/write/publish permissions and app scopes; product service credentials cannot publish prices.
 
-## What is implemented and checked locally
+## Implemented and checked locally
 
-- Original Vue/Naive UI/ECharts dashboard, tables and charts; one HttpOnly staff login for calculator and product plans. Itemized CNY/USD/AI calculations use the existing backend.
-- Additive MySQL migration000014, immutable draft/publication history, exact amounts, optimistic locking, retry keys, strict service/staff scopes and server origin checks.
-- Transactional per-company-subject/per-product trial history, accepted quote snapshots and active access resolution for exact-version lifetime and bounded monthly coverage.
-- Trusted verified-settlement writer with replay/conflict/refund controls. It has no public HTTP grant endpoint or permissive default verifier. Fixtures do not prove a real provider integration.
-- Original plan chart and product-sales metrics read verified receipts and active paid plans. Empty company data stays empty; no customers, sales, credits or chart segments are fabricated.
-- Simulation and both Atlas app readers and displays consume current price/model/trial metadata. Their original simulation engines, research catalogs, previews and old signed license contracts remain preserved.
+Original Vue/Naive UI/ECharts layout, charts, role/agent features and one HttpOnly staff login are reused. The calculator uses the existing exact-decimal backend. Additive migrations000014–000016 retain financial history and add transactional trials, quotes, receipts and indexed relational subscription contracts. Old permanent grants remain readable for historical commitments, with no new sale path.
 
-See [verification evidence](verification/flexible-finance-2026-10-30.md). Public backend CI verifies the browser session/API contract. Actual private original-Vue UI verification separately requires the private built console; public CI cannot claim it built that private source.
+The trusted verified-settlement writer binds quote/payment/customer/amount/period, prevents replay/conflicting or overlapping fulfillment and preserves refund outcomes. It has no public grant endpoint or permissive verifier. Fixtures do not establish a live provider integration. Original dashboard metrics read verified receipts/paid records, never fabricated sales.
+
+Simulation and both Atlas readers/display paths accept the safe four-plan contract; the Atlas existing company study backend also serves its public offer proxy without creating another auth store. Latest Atlas research, frozen digests, notes/history and resizable inspector remain intact. See [source-bound verification](verification/subscriptions-2026-10-30.md).
 
 ## Remaining release gates
 
 | Area | Required before activation |
 | --- | --- |
-| Domain, TLS and host | Owner-selected domain/region/operating cap; same-origin app/staff reverse proxies; private service ports; durable storage; exact-source release CI and actual hosted browser tests. A purchase alone is not qualification. |
-| Company identity and recovery mail | Configure the existing shared company authority and sender, verify real delivery/reset, enroll the owner recovery address and keep its separate offline recovery code. The staged address is unverified; no sender is configured. Protected server-admin recovery remains available. |
-| Payments and monthly renewal | Select merchant/provider; connect its maintained verified SDK/adapter to quote snapshots; qualify signatures, amount/currency/subject binding, durable callbacks/replays, renewal period continuity, cancellation, refunds and reconciliation. Monthly currently means manual renewal. No mandate, automatic renewal or post-trial charge exists. |
-| Paid version delivery | Qualify durable recoverable browser-version delivery and migration of any legacy formal trials/signed grants before turning paid gates on. A central ledger record cannot guarantee perpetual hosted availability. |
-| Atlas paid content | Deploy the private company backend and real access enforcement before protected catalogs are sold. Current public research-preview assets stay previews. Static hosting alone does not provide a private identity/commerce service. |
-| AI and cloud compute/storage | Owner-approved provider/model, operating cap and qualified metering/receipts, isolation, consent and restore/backup checks. No paid AI/compute is enabled by a price or subscription switch. Existing local work stays on the user's device. |
-| Operations and human acceptance | Selected-host stopped backups and clean restore drill; service/support details; actual OS/browser/file-picker/campus tests and reviewed lessons/rights/volunteer walkthroughs where required by the Simulation release plan. |
+| Domain, TLS and host | Owner-selected domain/region/cap; same-origin routing; private service ports; durable storage, exact-source release CI and actual hosted browser tests. |
+| Company identity and recovery mail | Existing shared authority plus sender; real delivery/reset/lifecycle tests; verified owner recovery enrollment and offline recovery code. Staged email remains unverified without a sender. Protected server-admin recovery remains available. |
+| Payments and renewal | Maintained provider SDK/verified adapter, merchant credentials, signed exact quote binding, callbacks/replays, refunds/reconciliation and calendar continuity. All four periods currently use **manual renewal**. No automatic mandate or post-trial charge exists. |
+| Atlas paid content | Same-origin company backend and actual private catalog/access enforcement before paid content sales. Existing public research previews remain previews. |
+| AI, cloud compute/storage | Approved provider/model/budget, metering, isolation, explicit consent and backup/restore qualification. A subscription never enables these implicitly. |
+| Operations and acceptance | Chosen-host backups/clean restore, monitoring/support, real OS/browser/file-picker/campus checks and reviewed lessons/rights/user walkthroughs required by the existing product plans. |
 
-The separate private Simulation acceptance ledger and its deferred/human/operational criteria remain unchanged. Finance implementation does not increase product acceptance or make the wider release ready. Existing feature PRs are separate work and are not silently merged by this handoff. No new purchase, email transmission, paid service activation or remote production deployment has occurred.
+New subscriptions do not promise permanent hosted software delivery. Historical signed rights and version recovery remain preserved where relevant. The private Simulation acceptance ledger and deferred/human/operational criteria are unchanged; this is verified local engineering, not a production-ready or deployed release. Separate feature PRs remain separate. No live payment, paid API call, purchase or cloud deployment occurred.

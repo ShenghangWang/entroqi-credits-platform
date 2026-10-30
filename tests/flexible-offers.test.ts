@@ -35,7 +35,7 @@ it('uses the existing HttpOnly console session for real calculator access while 
     expect((await app.inject({method:'POST',url,headers:manager,payload:scenario()})).statusCode).toBe(200);
     expect((await app.inject({url:'/api/v1/platform/pricing/products/simulation:modeler-v1-local',headers:manager})).statusCode).toBe(403);
     expect((await app.inject({method:'POST',url:'/api/v1/platform/pricing/versions',headers:manager,payload:{}})).statusCode).toBe(400);
-    expect((await app.inject({method:'POST',url:'/api/v1/platform/pricing/products/atlas-ai:access/publish',headers:manager,payload:{priceVersionId:'00000000-0000-0000-0000-000000000000',expectedPublishedId:null,note:'manager cannot publish',idempotencyKey:'00000000-0000-0000-0000-000000000000'}})).statusCode).toBe(403);
+    expect((await app.inject({method:'POST',url:'/api/v1/platform/pricing/products/atlas-ai:access/publish',headers:manager,payload:{intervalMonths:1,priceVersionId:'00000000-0000-0000-0000-000000000000',expectedPublishedId:null,note:'manager cannot publish',idempotencyKey:'00000000-0000-0000-0000-000000000000'}})).statusCode).toBe(403);
     const redirect=await app.inject({url:'/v1/pricing'});expect(redirect.statusCode).toBe(302);expect(redirect.headers.location).toBe('/back-office/pricing');
     expect((await app.inject({url:'/v1/pricing/console.js'})).statusCode).toBe(404);
   }finally{await app.close();}

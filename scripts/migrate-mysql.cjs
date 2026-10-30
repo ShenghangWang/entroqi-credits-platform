@@ -551,6 +551,35 @@ MIGRATIONS.push({
 });
 DOWN_TABLES.unshift('commercial_payment_events','commercial_grants','commercial_quotes','commercial_trials');
 
+// Purchased intervals are relational, independently indexed by company identity/app.
+MIGRATIONS.push({name:'000015_subscription_periods',statements:[
+ `CREATE TABLE IF NOT EXISTS commercial_subscription_terms (
+  grant_id CHAR(36) CHARACTER SET ascii COLLATE ascii_bin PRIMARY KEY,
+  application VARCHAR(100) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  issuer VARCHAR(100) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  subject VARCHAR(191) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  price_version_id CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  interval_months SMALLINT UNSIGNED NOT NULL,
+  amount_minor DECIMAL(16,0) UNSIGNED NOT NULL, currency CHAR(3) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  period_start BIGINT UNSIGNED NOT NULL, period_end BIGINT UNSIGNED NOT NULL,
+  calendar_anchor_day SMALLINT UNSIGNED NOT NULL,
+  FOREIGN KEY(grant_id) REFERENCES commercial_grants(id),
+  FOREIGN KEY(price_version_id) REFERENCES pricing_versions(id),
+  FOREIGN KEY(issuer,subject) REFERENCES customer_external_identities(issuer,subject),
+  CONSTRAINT subscription_interval CHECK(interval_months IN (1,3,12,24)),
+  CONSTRAINT subscription_dates CHECK(period_end>period_start),
+  CONSTRAINT subscription_currency CHECK(currency='CNY'),
+  CONSTRAINT subscription_anchor CHECK(calendar_anchor_day BETWEEN 1 AND 31),
+  INDEX subscription_customer_access(application,issuer,subject,period_start,period_end)
+ ) ENGINE=InnoDB`
+]});
+DOWN_TABLES.unshift('commercial_subscription_terms');
+
+// Distinguish the subscription family from its1/3/12/24-month interval.
+MIGRATIONS.push({name:'000016_subscription_price_family',statements:[
+ "ALTER TABLE pricing_products MODIFY COLUMN billing_type ENUM('one_time','monthly','usage','subscription') NOT NULL"
+]});
+
 const MIGRATION_NAMES = MIGRATIONS.map((migration) => migration.name);
 
 function mysqlConfig() {

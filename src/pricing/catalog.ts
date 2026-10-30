@@ -7,7 +7,7 @@ import { moneyMinorUnits } from "../payment/money.js";
 import { calculateCostScenario, reviewCostScenario, type CostScenario } from "./cost-calculator.js";
 
 export interface DraftPrice {
-  productCode: string; label: string; billingType: "one_time" | "monthly" | "usage"; unit: string;
+  productCode: string; label: string; billingType: "one_time" | "monthly" | "usage" | "subscription"; unit: string;
   terms?: OfferTerms; price: string; expectedRevision: number; scenario: CostScenario; validUntil: number; evidenceNote: string;
 }
 interface ProductRow extends Record<string, unknown> { revision: number; published_price_id: string | null; billing_type: string }
@@ -30,7 +30,7 @@ export class PricingCatalog {
   async createDraft(actor: string, key: string, input: DraftPrice) {
     this.identity(actor, key);
     if (!input || Object.keys(input).some(k => !["productCode", "label", "billingType", "unit", "price", "expectedRevision", "scenario", "validUntil", "evidenceNote", "terms"].includes(k)) ||
-        !code(input.productCode) || !["one_time", "monthly", "usage"].includes(input.billingType) || typeof input.label !== "string" || !input.label.trim() || input.label.length > 160 ||
+        !code(input.productCode) || !["one_time", "monthly", "usage", "subscription"].includes(input.billingType) || typeof input.label !== "string" || !input.label.trim() || input.label.length > 160 ||
         typeof input.unit !== "string" || !input.unit.trim() || input.unit.length > 80 || !Number.isSafeInteger(input.expectedRevision) || input.expectedRevision < 0 ||
         !Number.isSafeInteger(input.validUntil) || input.validUntil < 0 || input.validUntil > this.now() + 366 * 86400000 ||
         typeof input.evidenceNote !== "string" || input.evidenceNote.trim().length < 10 || input.evidenceNote.length > 2000) throw new BadRequestError("Invalid price revision or cost evidence");
@@ -42,7 +42,7 @@ export class PricingCatalog {
     const hash = requestHash({ action: "draft", input });
     return this.db.withTransaction(async client => {
       const previous = await this.replay(client, actor, key, hash); if (previous) return previous;
-      if (input.validUntil <= this.now()) throw new BadRequestError("Cost evidence has expired");
+      if (input.validUntil <= this.now() && !(input.terms?.schemaVersion===2 && !input.terms.available)) throw new BadRequestError("Cost evidence has expired");
       // Product row serialization protects both first-create and later revisions.
       await client.query("insert into pricing_products (product_code,billing_type) values ($1,$2) on duplicate key update product_code=product_code", [input.productCode, input.billingType]);
       const product = (await client.query<ProductRow>("select revision,published_price_id,billing_type from pricing_products where product_code=$1 for update", [input.productCode])).rows[0]!;
@@ -82,6 +82,7 @@ export class PricingCatalog {
     if (!code(productCode)) throw new BadRequestError("Invalid product code");
     const product = (await this.db.query<ProductRow>("select revision,published_price_id,billing_type from pricing_products where product_code=$1", [productCode])).rows[0];
     const versions = await this.db.query<VersionRow>("select id,product_code,revision,payload from pricing_versions where product_code=$1 order by revision desc limit 50", [productCode]);
+    if(product?.published_price_id && !versions.rows.some(row=>row.id===product.published_price_id)){const published=await this.db.query<VersionRow>('select id,product_code,revision,payload from pricing_versions where id=$1 and product_code=$2',[product.published_price_id,productCode]);versions.rows.push(...published.rows);}
     return { productCode, revision: Number(product?.revision ?? 0), publishedPriceId: product?.published_price_id ?? null,
       versions: versions.rows.map(row => { const payload = json(row.payload); return { priceVersionId: row.id, revision: Number(row.revision), ...payload,
         assessment: reviewCostScenario(payload.scenario, row.id, payload.validUntil, this.now()) }; }) };
@@ -100,7 +101,7 @@ export class PricingCatalog {
     if(!row)throw new NotFoundError('Published offer unavailable');
     const payload=json(row.payload);
     const terms=payload.terms ? validateOfferTerms(payload.terms,payload.billingType) : null;
-    return {...published,terms,policyConfigured:terms!==null,autoChargeEnabled:false as const,paidAccessEnabled:false as const};
+    return {...published,eligibleForSale:published.eligibleForSale && !(terms?.schemaVersion===2&&!terms.available),terms,policyConfigured:terms!==null,autoChargeEnabled:false as const,paidAccessEnabled:false as const};
   }
 
 }

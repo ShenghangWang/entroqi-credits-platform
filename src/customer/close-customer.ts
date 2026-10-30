@@ -43,6 +43,10 @@ export async function closeCustomer(db: Database, issuer: string, subject: strin
       (select count(*) from agent_commissions where (agent_user_id = $1 or referred_user_id = $1) and status = 'pending')
       ) as count`, [row.user_id]);
     if (Number(obligations.rows[0]?.count ?? 1) !== 0) throw new ConflictError("Resolve outstanding account responsibilities before closing");
+    if(company){
+      const subscriptions=await client.query<{count:number}>(`select count(*) count from commercial_subscription_terms s join commercial_grants g on g.id=s.grant_id where s.issuer=$1 and s.subject=$2 and g.status='active' and s.period_end>$3`,[issuer,subject,Date.now()]);
+      if(Number(subscriptions.rows[0]?.count??1)>0)throw new ConflictError('Resolve paid subscription access or refunds before closing the company account');
+    }
     await client.query("update credit_accounts set status = 'closed', updated_at = now() where user_id = $1", [row.user_id]);
     await client.query("update users set phone = null, email = null, username = null, password_hash = null, status = 'closed', updated_at = now() where id = $1", [row.user_id]);
     if (company) await client.query("update customer_application_memberships set status='closed' where issuer=$1 and subject=$2", [issuer, subject]);

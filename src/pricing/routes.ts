@@ -1,3 +1,5 @@
+import { canonicalProduct,subscriptionPlan } from './subscription-terms.js';
+import { SubscriptionCatalog } from './subscription-catalog.js';
 import { createHash, timingSafeEqual } from "node:crypto";
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import type { Database } from "../db/pool.js";
@@ -25,7 +27,7 @@ export function parsePricingOperators(raw: string): PricingOperator[] {
 export function registerPricingRoutes(app: FastifyInstance, db: Database, operators: PricingOperator[], credentials: CatalogCredential[]) {
   const checked = parsePricingOperators(JSON.stringify(operators));
   if (checked.some(o => credentials.some(c => c.token === o.token))) throw new Error("Pricing operator credentials must be separate from application credentials");
-  const catalog = new PricingCatalog(db);
+  const catalog = new PricingCatalog(db),subscriptions=new SubscriptionCatalog(db);
   const caller = (request: FastifyRequest) => {
     const header = request.headers.authorization;
     if (typeof header !== "string" || !/^Bearer [A-Za-z0-9_-]{43,128}$/.test(header)) return undefined;
@@ -37,6 +39,7 @@ export function registerPricingRoutes(app: FastifyInstance, db: Database, operat
     if (!who) return reply.code(401).send({ error: "unauthorized" });
     const product = (request.params as { productCode?: string })?.productCode ?? (request.body as { productCode?: string })?.productCode;
     if (product !== undefined && typeof product !== "string") return reply.code(400).send({ error: "bad_request" });
+    if (permission!=='read' && product!==undefined && (canonicalProduct(product)||subscriptionPlan(product))) return reply.code(403).send({error:'use_scoped_subscription_console'});
     if (!who.permissions.includes(permission) || product !== undefined && !who.applications.includes(pricingApplication(product))) return reply.code(403).send({ error: "forbidden" });
   };
   const execute = async (operation: () => unknown, reply: FastifyReply) => {
@@ -51,7 +54,7 @@ export function registerPricingRoutes(app: FastifyInstance, db: Database, operat
     app.get<{ Params: { productCode: string } }>("/v1/pricing/products/:productCode", { preHandler: guard("read") }, (request, reply) => execute(() => catalog.history(request.params.productCode), reply));
     app.post<{ Body: DraftPrice & { idempotencyKey: string } }>("/v1/pricing/versions", { bodyLimit: 32768, preHandler: guard("write"), schema: { body: { type: "object", additionalProperties: false,
       required: ["productCode", "label", "billingType", "unit", "price", "expectedRevision", "scenario", "validUntil", "evidenceNote", "idempotencyKey"],
-      properties: { productCode: { type: "string" }, label: { type: "string" }, billingType: { enum: ["one_time", "monthly", "usage"] }, unit: { type: "string" }, price: { type: "string" }, expectedRevision: { type: "integer", minimum: 0 }, scenario: { type: "object" }, validUntil: { type: "integer" }, evidenceNote: { type: "string" }, terms: { type: "object" }, idempotencyKey: { type: "string" } } } } }, (request, reply) => execute(() => {
+      properties: { productCode: { type: "string" }, label: { type: "string" }, billingType: { enum: ["one_time", "monthly", "usage", "subscription"] }, unit: { type: "string" }, price: { type: "string" }, expectedRevision: { type: "integer", minimum: 0 }, scenario: { type: "object" }, validUntil: { type: "integer" }, evidenceNote: { type: "string" }, terms: { type: "object" }, idempotencyKey: { type: "string" } } } } }, (request, reply) => execute(() => {
       const { idempotencyKey, ...draft } = request.body; return catalog.createDraft(caller(request)!.id, idempotencyKey, draft);
     }, reply));
     app.post<{ Params: { productCode: string }; Body: { priceVersionId: string; expectedPublishedId: string | null; note: string; idempotencyKey: string } }>("/v1/pricing/products/:productCode/publish", { preHandler: guard("publish") }, (request, reply) => execute(() => {
@@ -66,12 +69,12 @@ export function registerPricingRoutes(app: FastifyInstance, db: Database, operat
     const client = credentials.find(c => timingSafeEqual(digest(c.token), digest(header.slice(7))));
     if (!client) return reply.code(401).send({ error: "unauthorized" });
     if (!client.permissions.includes("catalog") || client.application !== pricingApplication(request.params.productCode)) return reply.code(403).send({ error: "forbidden" });
-  } }, (request, reply) => execute(() => catalog.published(request.params.productCode), reply));
+  } }, (request, reply) => execute(() => canonicalProduct(request.params.productCode)?subscriptions.offers(request.params.productCode):catalog.published(request.params.productCode), reply));
   app.get<{ Params: { productCode: string } }>("/v1/offers/:productCode", { onRequest: async (request, reply) => {
     const header = request.headers.authorization;
     if (typeof header !== "string" || !/^Bearer [A-Za-z0-9_-]{43,128}$/.test(header)) return reply.code(401).send({ error: "unauthorized" });
     const client = credentials.find(c => timingSafeEqual(digest(c.token), digest(header.slice(7))));
     if (!client) return reply.code(401).send({ error: "unauthorized" });
     if (!client.permissions.includes("catalog") || client.application !== pricingApplication(request.params.productCode)) return reply.code(403).send({ error: "forbidden" });
-  } }, (request, reply) => execute(() => catalog.offer(request.params.productCode), reply));
+  } }, (request, reply) => execute(() => canonicalProduct(request.params.productCode)?subscriptions.offers(request.params.productCode):catalog.offer(request.params.productCode), reply));
 }

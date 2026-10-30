@@ -3,7 +3,7 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
 import type { Database } from '../db/pool.js';
 import type { ServiceCredential } from '../private-api.js';
 import { DomainError } from '../domain/errors.js';
-import { PricingCatalog } from '../pricing/catalog.js';
+import { SubscriptionCatalog } from '../pricing/subscription-catalog.js';
 import { CompanyRegistry, COMPANY_ISSUER } from './registry.js';
 import { registerBackOfficeRoutes } from '../back-office/routes.js';
 
@@ -19,7 +19,7 @@ function bearer<T extends { token: string }>(request: FastifyRequest, entries: T
 export async function registerCompanyRoutes(app: FastifyInstance, db: Database, credentials: ServiceCredential[], supplied: PlatformOperator[], operatorFile?: string, reservedTokens: string[] = []) {
   const source = createOperatorSource(parsePlatformOperators(JSON.stringify(supplied)), operatorFile, [...credentials.map(item => item.token), ...reservedTokens]);
   const operators = await source.read();
-  const registry = new CompanyRegistry(db), catalog = new PricingCatalog(db);
+  const registry = new CompanyRegistry(db), catalog = new SubscriptionCatalog(db);
   const execute = async (operation: () => unknown, reply: import('fastify').FastifyReply) => {
     reply.header('Cache-Control', 'no-store');
     try { return await operation(); }
@@ -56,10 +56,10 @@ export async function registerCompanyRoutes(app: FastifyInstance, db: Database, 
     if (section === 'transactions') return { section, ...(await registry.transactions(scopes, Number(request.query.cursor ?? Number.MAX_SAFE_INTEGER))), commerceEnabled: false };
     const products = await Promise.all(applications.map(async row => {
       const history = await catalog.history(row.priceProductCode);
-      const current = history.versions.find(version => version.priceVersionId === history.publishedPriceId);
+      const offers=await catalog.offers(row.priceProductCode);
       return { ...row, serviceConfigured: credentials.some(credential => credential.application === row.application && credential.issuer === row.issuer && credential.identityMode === 'company' && credential.permissions.includes('provision') && credential.permissions.includes('balance')),
-        priceStatus: current ? 'reference_only' : history.versions.length ? 'draft_only' : 'unpriced', referencePrice: current?.price ?? null,
-        priceRevisions: history.revision, commerceEnabled: false, paidAccessEnabled: false };
+        priceStatus: offers.plans.length ? 'reference_only' : history.plans.some(plan=>plan.history.versions.length) ? 'draft_only' : 'unpriced', referencePrice: null,plans:offers.plans,
+        priceRevisions: history.plans.reduce((sum,plan)=>sum+plan.history.revision,0), commerceEnabled: false, paidAccessEnabled: false };
     }));
     return { schemaVersion: 1, section, issuer: COMPANY_ISSUER, applications: products, commerceEnabled: false, paidAccessEnabled: false };
   }, reply));
