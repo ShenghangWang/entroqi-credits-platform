@@ -2,6 +2,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { mkdtemp, rm, readFile, writeFile, chmod, symlink, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { parseStaffDocument } from '../src/back-office/staff-document.js';
 import { initializeStaffCredentials, recoverDeveloperCredential, checkRecoveredCredential } from '../src/back-office/credential-maintenance.js';
 import { createOperatorSource, readPrivateFile, StaffLoginThrottle } from '../src/back-office/operator-source.js';
 import { buildPrivateApp } from '../src/private-api.js';
@@ -24,7 +25,7 @@ const origin = 'http://127.0.0.1:3100';
 it('recovers the developer without the forgotten secret, preserves privileges and records no credential in the audit', async () => {
   const { file, output } = await fixture();
   await recoverDeveloperCredential(file, owner.id, output, 'INC-123 verified owner recovery');
-  const rows = JSON.parse(await readPrivateFile(file)) as PlatformOperator[];
+  const rows = parseStaffDocument(await readPrivateFile(file)).operators;
   expect(rows[0]).toMatchObject({ id: owner.id, role: owner.role, applications: owner.applications });
   expect(rows[0]!.token).toMatch(/^[A-Za-z0-9_-]{43}$/); expect(rows[0]!.token).not.toBe(owner.token);
   expect(rows[1]).toEqual(admin);

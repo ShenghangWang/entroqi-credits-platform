@@ -7,6 +7,7 @@ import type { PlatformOperator } from '../company/routes.js';
 import { BackOfficeData, operatorUser, roleOf } from './data.js';
 import { registerOwnerRecoveryRoutes } from './owner-recovery-routes.js';
 import { registerBackOfficePricing } from './pricing-routes.js';
+import { registerAdministrationRoutes } from './administration-routes.js';
 import { getCommissionPolicy } from './commission-policy.js';
 import { operatorFingerprint, StaffLoginThrottle, type OperatorSource } from './operator-source.js';
 
@@ -53,7 +54,7 @@ export function registerBackOfficeRoutes(app: FastifyInstance, db: Database, sou
   };
   app.get('/', (_request, reply) => reply.redirect('/back-office'));
   app.get('/v1/platform', (_request, reply) => reply.redirect('/back-office'));
-  app.get('/back-office', shell); app.get('/back-office/pricing', shell);
+  app.get('/back-office/owners',shell); app.get('/back-office', shell); app.get('/back-office/pricing', shell);
   app.get('/v1/pricing',(_request,reply)=>reply.redirect('/back-office/pricing'));  app.get('/back-office/login', shell); app.get('/back-office/recovery', shell);
   app.get<{ Params: { file: string } }>('/console/assets/:file', async (request, reply) => {
     if (!directory || !/^[A-Za-z0-9_.-]+\.(js|css|svg|woff2?)$/.test(request.params.file)) return reply.code(404).send();
@@ -75,7 +76,7 @@ export function registerBackOfficeRoutes(app: FastifyInstance, db: Database, sou
     if (sessions.size >= 100) return reply.code(429).send({ message: '后台会话已达上限，请稍后重试。' });
     const token = randomBytes(32).toString('base64url'); sessions.set(hash(token).toString('hex'), { operator, expiresAt: Date.now() + sessionDuration });
     reply.header('Set-Cookie', 'entroqi_credits_staff=' + token + '; Path=/; HttpOnly; SameSite=Strict; Max-Age=1800' + (request.protocol === 'https' || request.headers.origin?.startsWith('https://') ? '; Secure' : ''));
-    return wrap({ userInfo: operatorUser(operator), features: { agentsEnabled } });
+    return wrap({ userInfo: operatorUser(operator), features: { agentsEnabled,userProvisioningEnabled:false } });
   });
   const recoveryUrl = process.env.CREDITS_COMPANY_ACCOUNT_RECOVERY_URL;
   if (recoveryUrl) {
@@ -88,7 +89,7 @@ export function registerBackOfficeRoutes(app: FastifyInstance, db: Database, sou
     developerRecovery: 'authorized_server_administrator', managedCredentialFile: source.managed,
     companyAccountRecoveryUrl: recoveryUrl ?? null, ownerEmailRecovery,
   })));
-  app.get('/api/v1/auth/me', { preHandler: guard }, request => wrap({ userInfo: operatorUser(caller(request)!), features: { agentsEnabled } }));
+  app.get('/api/v1/auth/me', { preHandler: guard }, request => wrap({ userInfo: operatorUser(caller(request)!), features: { agentsEnabled,userProvisioningEnabled:false } }));
   app.post('/api/v1/auth/logout', { preHandler: guard }, (request, reply) => {
     if (!sameOrigin(request)) return reply.code(403).send({ message: '来源校验失败。' });
     const cookie = request.headers.cookie?.split(';').map(value => value.trim()).find(value => value.startsWith('entroqi_credits_staff='))?.slice('entroqi_credits_staff='.length);
@@ -111,7 +112,13 @@ export function registerBackOfficeRoutes(app: FastifyInstance, db: Database, sou
     return execute(() => data.ledger(caller(request)!, Number(page), Number(pageSize), applicationCode), reply);
   });
   app.get('/api/v1/platform/agent/transactions', { preHandler: guard }, (request, reply) => execute(async () => ({ ...(await data.ledger(caller(request)!)), agent: { ...operatorUser(caller(request)!), userId: caller(request)!.id } }), reply));
+  registerAdministrationRoutes(app,db,source,{guard,caller,sameOrigin,headers:common});
   registerBackOfficePricing(app,db,{guard,caller,sameOrigin,headers:common});
+  app.post<{Body:Record<string,unknown>}>('/api/v1/platform/users',{preHandler:guard,bodyLimit:4096},(request,reply)=>{
+    if(!sameOrigin(request))return reply.code(403).send({message:'来源校验失败。'});
+    if(request.body?.targetRole==='user' && ['applicationCode','planCode','initialPoints'].some(k=>k in request.body))return reply.code(400).send({message:'公司账号创建不绑定应用、套餐或初始积分；付费权益须独立处理。'});
+    return reply.code(409).send({code:'INTEGRATION_NOT_ACTIVATED',message:'后台代建需接通现有公司统一账号服务。当前未创建账号或发放权益；普通用户可通过公司账号自行注册。'});
+  });
   app.all('/api/v1/platform/*', { preHandler: guard }, (request, reply) => {
     if (request.method !== 'GET' && !sameOrigin(request)) return reply.code(403).send({ message: '来源校验失败。' });
     return reply.code(409).send({ code: 'INTEGRATION_NOT_ACTIVATED', message: '保留的后台操作需先接通公司统一账号、授权及相应支付/结算流程；当前未创建账号、扣款或发放权益。普通用户可通过公司账号自行注册。' });

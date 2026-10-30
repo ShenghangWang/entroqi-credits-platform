@@ -34,3 +34,7 @@ Simulation and both Atlas readers/display paths accept the safe four-plan contra
 | Operations and acceptance | Chosen-host backups/clean restore, monitoring/support, real OS/browser/file-picker/campus checks and reviewed lessons/rights/user walkthroughs required by the existing product plans. |
 
 New subscriptions do not promise permanent hosted software delivery. Historical signed rights and version recovery remain preserved where relevant. The private Simulation acceptance ledger and deferred/human/operational criteria are unchanged; this is verified local engineering, not a production-ready or deployed release. Separate feature PRs remain separate. No live payment, paid API call, purchase or cloud deployment occurred.
+
+## Owner administration update31October2026
+
+Use `/back-office/owners` for separate co-owner logins and attributed price/security records. [Owner administration](owner-administration-and-audit.md) describes explicit reauthentication/confirmation, scope inheritance, recovery and current signup-adapter limits; [verification](verification/owner-administration-2026-10-31.md) records179unit/50MySQL and actual original-Vue browser checks. Apply additive migration000017 with the full protected staff/audit backup. This preserves all deployment/payment gates above.

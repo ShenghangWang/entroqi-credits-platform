@@ -580,6 +580,19 @@ MIGRATIONS.push({name:'000016_subscription_price_family',statements:[
  "ALTER TABLE pricing_products MODIFY COLUMN billing_type ENUM('one_time','monthly','usage','subscription') NOT NULL"
 ]});
 
+MIGRATIONS.push({name:'000017_staff_audit_events',statements:[
+ `CREATE TABLE IF NOT EXISTS staff_audit_events (
+  event_id CHAR(36) CHARACTER SET ascii COLLATE ascii_bin PRIMARY KEY,
+  occurred_at BIGINT UNSIGNED NOT NULL,
+  actor_id VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  action VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  target_id VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  reason VARCHAR(300) NOT NULL, details JSON NOT NULL,
+  INDEX staff_audit_time(occurred_at,event_id), INDEX staff_audit_actor(actor_id,occurred_at)
+ ) ENGINE=InnoDB`
+]});
+DOWN_TABLES.unshift('staff_audit_events');
+
 const MIGRATION_NAMES = MIGRATIONS.map((migration) => migration.name);
 
 function mysqlConfig() {

@@ -1,3 +1,4 @@
+import { queueStaffAudit } from './staff-administration.js';
 import { constants } from 'node:fs';
 import { open, lstat, rename, unlink } from 'node:fs/promises';
 import { dirname, isAbsolute, resolve } from 'node:path';
@@ -78,6 +79,7 @@ export async function recoverDeveloperCredential(file: string, operatorId: strin
       document.ownerRecovery.outbox = document.ownerRecovery.outbox.filter(row => row.purpose === 'changed');
       document.ownerRecovery.credentialFingerprint = operatorFingerprint(operator);
     }
+    queueStaffAudit(document,{actorId:'server-admin',action:'owner.credential_recovered',targetId:operator.id,reason:reason.trim(),details:{status:'offline_recovery'}});
     await atomicReplace(file, serializeStaffDocument(document));
     await audit(file, { event: 'developer_recovery_completed', eventId, operatorId, reason: reason.trim(), sessions: 'previous credential and sessions rejected on next request' });
     return { operatorId, eventId, credentialFile: output };

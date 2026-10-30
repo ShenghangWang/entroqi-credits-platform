@@ -18,7 +18,8 @@
     "verify:pricing-ui": "node scripts/verify-pricing-console.mjs --full-ui",
     "verify:pricing-contract": "node scripts/verify-pricing-console.mjs",
     "company:register": "node -r dotenv/config scripts/register-company-apps.cjs",
-    "staff:credentials": "node scripts/staff-credentials.mjs"
+    "staff:credentials": "node scripts/staff-credentials.mjs",
+    "verify:owners-ui": "node scripts/verify-owner-console.mjs"
   },
   "engines": {
     "node": ">=20.11.0"

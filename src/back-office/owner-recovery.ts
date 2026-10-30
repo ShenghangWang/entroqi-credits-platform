@@ -1,3 +1,4 @@
+import { queueStaffAudit } from './staff-administration.js';
 import { createHash, createHmac, createCipheriv, createDecipheriv, randomBytes, randomInt, timingSafeEqual } from 'node:crypto';
 import { atomicReplace, withLock, audit } from './credential-maintenance.js';
 import { readPrivateFile, operatorFingerprint } from './operator-source.js';
@@ -38,7 +39,11 @@ export class OwnerRecoveryService {
   private async mutate<T>(operation: (document: StaffDocument) => Promise<T> | T): Promise<T> {
     return withLock(this.file, async () => {
       const document = parseStaffDocument(await readPrivateFile(this.file));
+      const previousStatus=document.ownerRecovery?.status,previousCredential=document.ownerRecovery?.credentialFingerprint;
       const result = await operation(document);
+      const state=document.ownerRecovery;
+      if(state && previousStatus!==state.status)queueStaffAudit(document,{actorId:state.ownerId,action:'owner.recovery_status_changed',targetId:state.ownerId,reason:'Verified owner recovery enrollment state changed',details:{previousStatus:previousStatus??'none',status:state.status}},this.now());
+      if(state && previousCredential && previousCredential!==state.credentialFingerprint)queueStaffAudit(document,{actorId:'owner-recovery',action:'owner.credential_recovered',targetId:state.ownerId,reason:'Verified email and offline recovery proof completed',details:{status:state.status}},this.now());
       await atomicReplace(this.file,serializeStaffDocument(document)); return result;
     });
   }

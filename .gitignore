@@ -12,3 +12,5 @@ secrets/
 security-private/
 staff-operators*.json*
 recovered-credential*.json
+
+artifacts-owners/

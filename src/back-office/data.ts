@@ -6,7 +6,7 @@ import { defaultBackOfficeRolePermissions } from './account-creation-policy.js';
 export const roleOf = (operator: PlatformOperator) => operator.role ?? 'developer';
 export function operatorUser(operator: PlatformOperator) {
   const role = roleOf(operator);
-  return { id: operator.id, username: operator.id, displayName: role === 'developer' ? (operator.id === 'company-owner' ? '公司所有者' : '开发者') : role === 'admin' ? '公司管理员' : '代理商', role, permissions: [...defaultBackOfficeRolePermissions[role],...(operator.pricingPermissions ?? []).map(permission=>'pricing:'+permission)], accountScope: 'personal' };
+  return { id: operator.id, username: operator.id, displayName: operator.displayName ?? (role === 'developer' ? '公司所有者' : role === 'admin' ? '公司管理员' : '代理商'), role, permissions: [...defaultBackOfficeRolePermissions[role],...(operator.pricingPermissions ?? []).map(permission=>'pricing:'+permission)], accountScope: 'personal' };
 }
 // Adapter to the owner's existing full console DTOs. Financial calculations and
 // ledger/agent implementations remain the existing Credits core.

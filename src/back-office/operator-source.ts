@@ -7,7 +7,7 @@ import { parseStaffDocument } from './staff-document.js';
 
 // File-mode credentials come only from this authoritative secret file. Never
 // fall back to an old environment credential after a rotation or read failure.
-export interface OperatorSource { read(): Promise<PlatformOperator[]>; managed: boolean; file?: string }
+export interface OperatorSource { read(): Promise<PlatformOperator[]>; managed: boolean; file?: string; reservedTokens?: string[] }
 export async function readPrivateFile(path: string): Promise<string> {
   if (!isAbsolute(path)) throw new Error('Private credential path must be absolute');
   const handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW);
@@ -25,7 +25,7 @@ export function createOperatorSource(initial: PlatformOperator[], file?: string,
   };
   validate(initial);
   return {
-    managed: Boolean(file),
+    managed: Boolean(file), reservedTokens,
     ...(file ? { file } : {}),
     async read() { return validate(file ? parseStaffDocument(await readPrivateFile(file)).operators : structuredClone(initial)); },
   };
@@ -33,6 +33,7 @@ export function createOperatorSource(initial: PlatformOperator[], file?: string,
 export function operatorFingerprint(operator: PlatformOperator): string {
   const identity:unknown[]=[operator.id,operator.token,operator.role ?? 'developer',[...operator.applications].sort(),operator.subject ?? null];
   if(operator.pricingPermissions)identity.push([...operator.pricingPermissions].sort());
+  if(operator.displayName!==undefined)identity.push(['displayName',operator.displayName]);
   return createHash('sha256').update(JSON.stringify(identity)).digest('hex');
 }
 
