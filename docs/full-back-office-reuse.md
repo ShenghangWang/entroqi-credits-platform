@@ -23,3 +23,7 @@ The official [Alipay OpenAPI SDK](https://github.com/alipay/alipay-sdk-nodejs-al
 ## Verification
 
 Verify the actual reused production Vue build and each original dashboard/table role against only the clean Entroqi database. Test cookie attributes, origin/session failure, role forgery and scope isolation; preserve all existing financial/agent tests. Inspect the live empty charts and verify their aggregates using synthetic isolated-test data, never copy historical customer totals into the company database. Show actual registrations and zero records when the new company store is empty. Record dependency audits, tests, screenshots and remaining activation boundaries in the handoff.
+
+## Reviewed GitHub organization, 4 November 2026
+
+The owner's source-publication request adds a private `ShenghangWang/entroqi-credits-back-office` source home for the maintained console history. This preserves the original UI and its policies; no frontend code is copied into public Credits. Simulation's private company manifest pins the paired commits and automates safe checkout and integration verification. Read [the policy map](current-state-and-policy-map.md) before interpreting historical Phase8 capabilities. Unmounted policy/provisioning writes are explicitly advertised and shown read-only.

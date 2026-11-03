@@ -1,3 +1,4 @@
+import {backOfficeFeatures} from './capabilities.js';
 import { randomBytes, createHash, timingSafeEqual } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
@@ -76,7 +77,7 @@ export function registerBackOfficeRoutes(app: FastifyInstance, db: Database, sou
     if (sessions.size >= 100) return reply.code(429).send({ message: '后台会话已达上限，请稍后重试。' });
     const token = randomBytes(32).toString('base64url'); sessions.set(hash(token).toString('hex'), { operator, expiresAt: Date.now() + sessionDuration });
     reply.header('Set-Cookie', 'entroqi_credits_staff=' + token + '; Path=/; HttpOnly; SameSite=Strict; Max-Age=1800' + (request.protocol === 'https' || request.headers.origin?.startsWith('https://') ? '; Secure' : ''));
-    return wrap({ userInfo: operatorUser(operator), features: { agentsEnabled,userProvisioningEnabled:false } });
+    return wrap({ userInfo: operatorUser(operator), features: backOfficeFeatures(agentsEnabled) });
   });
   const recoveryUrl = process.env.CREDITS_COMPANY_ACCOUNT_RECOVERY_URL;
   if (recoveryUrl) {
@@ -89,7 +90,7 @@ export function registerBackOfficeRoutes(app: FastifyInstance, db: Database, sou
     developerRecovery: 'authorized_server_administrator', managedCredentialFile: source.managed,
     companyAccountRecoveryUrl: recoveryUrl ?? null, ownerEmailRecovery,
   })));
-  app.get('/api/v1/auth/me', { preHandler: guard }, request => wrap({ userInfo: operatorUser(caller(request)!), features: { agentsEnabled,userProvisioningEnabled:false } }));
+  app.get('/api/v1/auth/me', { preHandler: guard }, request => wrap({ userInfo: operatorUser(caller(request)!), features: backOfficeFeatures(agentsEnabled) }));
   app.post('/api/v1/auth/logout', { preHandler: guard }, (request, reply) => {
     if (!sameOrigin(request)) return reply.code(403).send({ message: '来源校验失败。' });
     const cookie = request.headers.cookie?.split(';').map(value => value.trim()).find(value => value.startsWith('entroqi_credits_staff='))?.slice('entroqi_credits_staff='.length);

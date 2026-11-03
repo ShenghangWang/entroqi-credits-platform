@@ -36,3 +36,13 @@ it('an agent credential cannot use the broad staff data API and agent login is o
     expect((await app.inject({ method: 'POST', url: '/api/v1/auth/login', headers: { origin: 'http://127.0.0.1:3100' }, payload: { username: agent.id, password: agent.token } })).statusCode).toBe(401);
   } finally { await app.close(); }
 });
+it('distinguishes retained role permissions from unmounted policy/provisioning writes',async()=>{
+ const app=await buildPrivateApp(db,[service],[],[owner]),origin='http://127.0.0.1:3100';
+ try{
+  const login=await app.inject({method:'POST',url:'/api/v1/auth/login',headers:{origin},payload:{username:'owner',password:owner.token}});
+  const expected={policyEditingEnabled:false,staffProvisioningEnabled:false,userProvisioningEnabled:false};expect(login.json()).toMatchObject({data:{features:expected}});
+  const cookie=String(login.headers['set-cookie']).split(';')[0]!;expect((await app.inject({url:'/api/v1/auth/me',headers:{cookie}})).json()).toMatchObject({data:{features:expected}});
+  const response=await app.inject({method:'POST',url:'/api/v1/platform/account-creation-policy',headers:{cookie,origin},payload:{developerAllowsAdminCreateUsers:true,policyEditingEnabled:true}});
+  expect(response.statusCode).toBe(409);expect(response.json()).toMatchObject({code:'INTEGRATION_NOT_ACTIVATED'});
+ }finally{await app.close()}
+});

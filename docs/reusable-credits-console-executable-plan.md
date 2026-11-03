@@ -1,5 +1,7 @@
 # Reusable Credits Platform Console Executable Plan
 
+**Historical host-application reference.** The Phase8 status below belongs to the original host. For current standalone policies, mounted routes and actual gaps, read [the source and policy map](current-state-and-policy-map.md). Preserve these original rules; do not interpret this dated plan as live standalone capability.
+
 Status: Phase 8 completed locally
 Date: 2026-06-05
 Primary route: `/back-office`
