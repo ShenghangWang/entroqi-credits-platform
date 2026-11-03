@@ -1,6 +1,6 @@
 # Company app bundles
 
-Owner direction and implementation plan, 3 November 2026 (Asia/Shanghai). This supplements the subscription contract; permanent licenses remain closed to new sales. Status: implemented locally; final regression and source packaging are being recorded. Real checkout remains disabled.
+Owner direction and implementation plan, 3 November 2026 (Asia/Shanghai). This supplements the subscription contract; permanent licenses remain closed to new sales. Status: implemented and verified locally; source-specific evidence is in the shared3November release verification. Real checkout remains disabled.
 
 ## Reuse research before implementation
 
@@ -45,3 +45,5 @@ Give the existing Simulation company commercial credential the explicit `bundles
 Quotes and grants are separate records. At most20 unexpired bundle quotes per company identity are allowed. Selection is bounded at32 apps, common period is1/3/12/24months, public response reads are bounded at256KiB, and existing trusted ingress/concurrency/timeouts remain enforced. Discounts use deterministic ASCII ties and integer-fen conservation. Rule history returns current draft/published heads (bounded2048rows); a larger operational catalog needs a reviewed paginated staff view. Do not enumerate every possible combination.
 
 Each manual renewal accepts its current reviewed quote. Already-paid amounts/dates and previously accepted unexpired quotes are immutable. Different existing expiry dates, partial bundle refunds, partial cancellation and mid-cycle proration require future explicit provider-supported reconciliation; the first release refuses them rather than losing paid time. Trials stay per-app, explicitly requested, never started by selecting a bundle.
+
+Current-read locking is explicit for authoritative price/version and overlap decisions; tests retain an older MySQL consistent snapshot across a separate publication/payment and verify current prices and no duplicate coverage. Receipt claims reuse the transactional action-lock store across single-app and aggregate purchase paths.
