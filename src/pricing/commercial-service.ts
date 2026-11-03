@@ -6,19 +6,19 @@ import { companyApplications, COMPANY_ISSUER } from '../company/registry.js';
 import { PricingCatalog } from './catalog.js';
 import type { OfferTerms } from './offer-terms.js';
 import { calendarPeriodEnd,subscriptionPeriods,subscriptionPlan,planDefinition,validateSubscriptionTerms,type SubscriptionTerms } from './subscription-terms.js';
-const json=<T>(value:string|T):T=>typeof value==='string'?JSON.parse(value) as T:value;
+export const json=<T>(value:string|T):T=>typeof value==='string'?JSON.parse(value) as T:value;
 export interface CommercialPrincipal { application:string; issuer:string; subject:string }
 export interface QuoteSnapshot extends Record<string,unknown> {
  quoteId:string; application:string; issuer:string; subject:string; productCode:string; priceVersionId:string;
  amountMinor:string; currency:'CNY'; label:string; terms:OfferTerms; requestedVersion:string;
  createdAt:number; expiresAt:number; checkoutAvailable:false;
- planCode?:string; periodStart?:number|null; periodEnd?:number|null; calendarAnchorDay?:number;
+ planCode?:string; periodStart?:number|null; periodEnd?:number|null; calendarAnchorDay?:number; bundleQuoteId?:string;
 }
 export interface TrialSnapshot extends Record<string,unknown>{application:string;priceVersionId:string;version:string;startedAt:number;expiresAt:number;terms:OfferTerms}
 interface GrantSnapshot extends QuoteSnapshot {grantId:string;paidAt:number;periodStart:number|null;periodEnd:number|null}
 function principal(value:CommercialPrincipal){if(value.issuer!==COMPANY_ISSUER||!companyApplications.some(r=>r.application===value.application)||!/^[A-Za-z0-9_-]{1,191}$/.test(value.subject))throw new ForbiddenError('Invalid company commercial identity');}
 function version(value:string){if(typeof value!=='string'||!/^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$/.test(value))throw new BadRequestError('Invalid application context');}
-async function active(client:DatabaseClient,who:CommercialPrincipal){
+export async function active(client:DatabaseClient,who:CommercialPrincipal){
  principal(who);
  const row=await client.query(`select e.user_id from customer_external_identities e join users u on u.id=e.user_id join customer_application_memberships m on m.issuer=e.issuer and m.subject=e.subject where e.issuer=$1 and e.subject=$2 and m.application=$3 and m.status='active' and u.status='active' for update`,[who.issuer,who.subject,who.application]);
  if(!row.rows.length)throw new ForbiddenError('Active company customer membership required');
@@ -51,7 +51,16 @@ export class CommercialService {
  async quote(who:CommercialPrincipal,requestedVersion:string,expectedPriceVersion:string,key:string){
   version(requestedVersion);if(!/^[a-f0-9-]{36}$/.test(key))throw new BadRequestError('Invalid quote request key');
   return this.db.withTransaction(async client=>{
-   await active(client,who);
+   return this.quoteInTransaction(client,who,requestedVersion,expectedPriceVersion,key);
+  });
+ }
+ /** Internal aggregate coordinator only; not a browser or provider entry point. */
+ async quoteInTransaction(client:DatabaseClient,who:CommercialPrincipal,requestedVersion:string,expectedPriceVersion:string,key:string,bundle?:{id:string}){
+  version(requestedVersion);principal(who);
+   if(!bundle)await active(client,who);else {
+    const customer=await client.query(`select e.user_id from customer_external_identities e join users u on u.id=e.user_id where e.issuer=$1 and e.subject=$2 and u.status='active' for update`,[who.issuer,who.subject]);
+    if(!customer.rows.length)throw new ForbiddenError('Active company account required');
+   }
    const actor='quote-'+who.application,hash=requestHash({who,requestedVersion,expectedPriceVersion});
    await client.query('insert into pricing_actions(actor_id,idempotency_key,request_hash,response) values($1,$2,$3,NULL) on duplicate key update actor_id=actor_id',[actor,key,hash]);
    const previous=(await client.query<{request_hash:string;response:string|QuoteSnapshot|null}>('select request_hash,response from pricing_actions where actor_id=$1 and idempotency_key=$2 for update',[actor,key])).rows[0]!;
@@ -64,10 +73,9 @@ export class CommercialService {
    const periodStart=Math.max(this.now(),Number(paid?.period_end??0),old?.periodEnd??0);
    const calendarAnchorDay=paid&&periodStart===Number(paid.period_end)?Number(paid.calendar_anchor_day):old&&periodStart===old.periodEnd?new Date(old.periodStart!).getUTCDate():new Date(periodStart).getUTCDate();
    const periodEnd=calendarPeriodEnd(periodStart,offer.terms.intervalMonths,calendarAnchorDay);
-   const snapshot:QuoteSnapshot={quoteId:randomUUID(),...who,productCode:offer.base,planCode:offer.productCode,priceVersionId:offer.priceVersionId,amountMinor:offer.amountMinor,currency:'CNY',label:offer.label,terms:offer.terms,requestedVersion,createdAt:this.now(),expiresAt:Math.min(this.now()+900000,offer.validUntil),periodStart,periodEnd,calendarAnchorDay,checkoutAvailable:false};
+   const snapshot:QuoteSnapshot={quoteId:randomUUID(),...(bundle?{bundleQuoteId:bundle.id}:{}),...who,productCode:offer.base,planCode:offer.productCode,priceVersionId:offer.priceVersionId,amountMinor:offer.amountMinor,currency:'CNY',label:offer.label,terms:offer.terms,requestedVersion,createdAt:this.now(),expiresAt:Math.min(this.now()+900000,offer.validUntil),periodStart,periodEnd,calendarAnchorDay,checkoutAvailable:false};
    await client.query('insert into commercial_quotes(id,application,issuer,subject,price_version_id,snapshot,expires_at) values($1,$2,$3,$4,$5,$6,$7)',[snapshot.quoteId,who.application,who.issuer,who.subject,offer.priceVersionId,snapshot,snapshot.expiresAt]);
    await client.query('update pricing_actions set response=$1 where actor_id=$2 and idempotency_key=$3',[snapshot,actor,key]);return snapshot;
-  });
  }
  async access(who:CommercialPrincipal,requestedVersion:string){
   version(requestedVersion);
@@ -91,12 +99,18 @@ export class VerifiedSettlementWriter {
   const proof=await this.verify(event);
   if(!proof||!/^[a-z0-9-]{1,40}$/.test(proof.provider)||![proof.eventId,proof.paymentId].every(id=>typeof id==='string'&&/^[A-Za-z0-9_:.-]{1,160}$/.test(id))||!/^[a-f0-9-]{36}$/.test(proof.quoteId)||!['paid','refunded'].includes(proof.state)||proof.currency!=='CNY'||!/^[1-9]\d{0,15}$/.test(proof.amountMinor)||!Number.isSafeInteger(proof.paidAt)||proof.paidAt<0)throw new BadRequestError('Invalid verified payment evidence');
   return this.db.withTransaction(async client=>{
+   return this.applyVerified(client,proof);
+  });
+ }
+ /** Trusted in-process aggregate fulfilment; never register as an HTTP handler. */
+ async applyVerified(client:DatabaseClient,proof:VerifiedSettlement,bundleQuoteId?:string){
    const hash=requestHash(proof);
    await client.query('insert into commercial_payment_events(provider,event_id,request_hash,response) values($1,$2,$3,NULL) on duplicate key update provider=provider',[proof.provider,proof.eventId,hash]);
    const previous=(await client.query<{request_hash:string;response:string|Record<string,unknown>|null}>('select request_hash,response from commercial_payment_events where provider=$1 and event_id=$2 for update',[proof.provider,proof.eventId])).rows[0]!;
    if(previous.request_hash!==hash)throw new ConflictError('Payment event replay changed');if(previous.response)return json(previous.response);
    const row=(await client.query<{snapshot:string|QuoteSnapshot}>('select snapshot from commercial_quotes where id=$1 for update',[proof.quoteId])).rows[0];if(!row)throw new NotFoundError('Payment quote unavailable');
    const quote=json(row.snapshot);
+   if(quote.bundleQuoteId!==bundleQuoteId)throw new ForbiddenError('Bundle lines require atomic aggregate settlement');
    await client.query('select issuer from customer_external_identities where issuer=$1 and subject=$2 for update',[quote.issuer,quote.subject]);
    if(quote.amountMinor!==proof.amountMinor||proof.paidAt<quote.createdAt||proof.paidAt>=quote.expiresAt)throw new ConflictError('Settlement does not match the accepted quote');
    const found=(await client.query<{id:string;quote_id:string;provider:string;payment_id:string;status:string}>('select id,quote_id,provider,payment_id,status from commercial_grants where quote_id=$1 or (provider=$2 and payment_id=$3) for update',[proof.quoteId,proof.provider,proof.paymentId])).rows;
@@ -120,6 +134,5 @@ export class VerifiedSettlementWriter {
     await client.query('insert into commercial_subscription_terms(grant_id,application,issuer,subject,price_version_id,interval_months,amount_minor,currency,period_start,period_end,calendar_anchor_day) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)',[grantId,quote.application,quote.issuer,quote.subject,quote.priceVersionId,terms.intervalMonths,quote.amountMinor,'CNY',quote.periodStart,quote.periodEnd,quote.calendarAnchorDay]);
    }
    const response={grantId,status,quoteId:quote.quoteId};await client.query('update commercial_payment_events set response=$1 where provider=$2 and event_id=$3',[response,proof.provider,proof.eventId]);return response;
-  });
  }
 }

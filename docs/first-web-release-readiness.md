@@ -38,3 +38,9 @@ New subscriptions do not promise permanent hosted software delivery. Historical 
 ## Owner administration update31October2026
 
 Use `/back-office/owners` for separate co-owner logins and attributed price/security records. [Owner administration](owner-administration-and-audit.md) describes explicit reauthentication/confirmation, scope inheritance, recovery and current signup-adapter limits; [verification](verification/owner-administration-2026-10-31.md) records179unit/50MySQL and actual original-Vue browser checks. Apply additive migration000017 with the full protected staff/audit backup. This preserves all deployment/payment gates above.
+
+## Multi-app bundles, 3 November 2026
+
+The owner now authorizes configurable exact-combination discounts. Open **定价与收费方案 → 多应用组合优惠** in the same original back office. Choose the full app set and period, enter a discount percentage, availability and review evidence, save a draft, then separately review/confirm publication. Configured combinations can be listed/reopened. To stop an offer, publish a disabled discount revision. Existing accepted quotes and paid periods remain intact. Unconfigured combinations have no extra discount. Each discounted line must still pass its original calculator review.
+
+Consequential changes show the named operator, time, exact combination/period, reason and before/after discount in **所有者与操作记录**. Customer subscription rows retain per-app paid amount/expiry and show their aggregate bundle quote/discount. Collection remains disabled; no real business prices/discounts were chosen. See [bundle plan and SDK research](bundle-pricing-plan.md). The current company-wide release sequence is in Simulation `docs/operations/company-first-web-release-2026-11-03.md`.

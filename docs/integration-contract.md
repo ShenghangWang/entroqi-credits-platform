@@ -12,7 +12,7 @@ Current contract: 25 October 2026. This replaces the old car-sales route walkthr
 
 ## Currently mounted API
 
-Only `GET /health`, `GET /health/db` and authenticated `POST /v1/customer` are available. Keep them private; the product backend calls through its service credential. A public browser uses its product's authenticated account boundary, never this bearer token or a caller-selected financial ID.
+The original identity surface is `GET /health`, `GET /health/db` and authenticated `POST /v1/customer`. Later reviewed extensions add scoped offers/commercial APIs and the bundle surface below; legacy payment/grant builders remain unmounted. Keep them private; the product backend calls through its service credential. A public browser uses its product's authenticated account boundary, never this bearer token or a caller-selected financial ID.
 
 ```http
 POST /v1/customer
@@ -43,3 +43,9 @@ The [canonical cross-product data/lifecycle contract](https://github.com/Shengha
 Before a paid API is introduced, derive app/payer from the authenticated scope; bind quote, business operation, hold, task, entitlement, receipt and mutation permission to it. Enforce app/payer business uniqueness independently of request retry keys; changing keys cannot duplicate a business charge. Use trusted actual usage and immutable pricing snapshots, short SQL transactions, durable outside-transaction dispatch/outbox, idempotent consumers and unknown-outcome reconciliation. Tested domain partial settlement and hold release do not implement payment refunds, paid project storage or a cloud worker.
 
 Delivery remains the [B01–B07 commercial queue](https://github.com/ShenghangWang/ai-native-simulation-platform/blob/main/docs/commercial/billing-delivery.md), with the existing [B03/B05 hardening spec](tasks/B03-B05-lifecycle-financial-hardening.md). Catalog/payment/refund/entitlement/storage/worker/provider/race/restore gates are still open. Free local Simulation work must remain available through billing outages.
+
+## Company bundles, 3 November 2026
+
+`POST /v1/bundles` requires a company credential with explicit `bundles` permission. Actions are `catalog` (only public published metadata), `preview` (distinct app set and common period), and `quote` (same selection, expected fingerprint, idempotency key and verified company subject supplied by the trusted BFF). Unknown fields and customer-supplied amounts/discounts are rejected. The Simulation BFF uses the existing session/CSRF/identity-change boundary and returns only checked public projections. The Atlas services keep their ordinary scoped credentials/access checks.
+
+One aggregate verified settlement is an in-process provider port only, never a public grant route. It atomically reuses existing per-app quote/grant/subscription records plus normalized `bundle_quote_items`; full refunds are equally atomic. Existing company closure checks continue seeing purchased coverage. Selected apps need not have created product profiles to be purchased; ordinary lazy participation is still required before using their paid features. See [bundle contract](bundle-pricing-plan.md) for matching, dates, bounds, withdrawal and future provider limits.

@@ -1,0 +1,42 @@
+{
+  "reviewedOn": "2026-11-03",
+  "installed": false,
+  "liveSdkOrMerchantTest": false,
+  "files": [
+    {
+      "repository": "stripe/stripe-node",
+      "commit": "6d5ed967d602224ac3056dc3f0befbb55487ee50",
+      "file": "src/resources/Coupons.ts",
+      "bytes": 11294,
+      "sha256": "9672eb3586862a38db4035a3d8d95ef816e1c5edeb6c9fbf353d33c44712e3e2"
+    },
+    {
+      "repository": "stripe/stripe-node",
+      "commit": "6d5ed967d602224ac3056dc3f0befbb55487ee50",
+      "file": "src/resources/Subscriptions.ts",
+      "bytes": 192074,
+      "sha256": "871c23b8c8df9474a832db3a687e83f53abb0b583a4b08c603ce7e3187ac8b9c"
+    },
+    {
+      "repository": "stripe/stripe-node",
+      "commit": "6d5ed967d602224ac3056dc3f0befbb55487ee50",
+      "file": "test/Webhook.spec.ts",
+      "bytes": 24530,
+      "sha256": "a8c7c6d6d0b6b7ed0fb3d1731e786f7d09037e2de8aef255840b58b831adacd9"
+    },
+    {
+      "repository": "PaddleHQ/paddle-node-sdk",
+      "commit": "5afd10b715a71fdd82691cebecad23f1b162df3c",
+      "file": "src/resources/discounts/index.ts",
+      "bytes": 2685,
+      "sha256": "4de05cee289ad32088280a77ce5b94cde9d75c677dfe94d7a56dbe74586a5345"
+    },
+    {
+      "repository": "PaddleHQ/paddle-node-sdk",
+      "commit": "5afd10b715a71fdd82691cebecad23f1b162df3c",
+      "file": "src/notifications/helpers/webhooks.ts",
+      "bytes": 7547,
+      "sha256": "0916b167da651d6118fd90457635d4cc770687b066a3b283bf21a9ad662c366f"
+    }
+  ]
+}

@@ -1,3 +1,4 @@
+import {registerBundleRoutes} from './pricing/bundle-routes.js';
 import { registerPricingRoutes, type PricingOperator } from "./pricing/routes.js";
 import { registerCompanyRoutes, type PlatformOperator } from './company/routes.js';
 import { registerCommercialRoutes } from './pricing/commercial-routes.js';
@@ -12,7 +13,7 @@ export type ServiceCredential = {
   token: string; application: string; issuer: string;
   onboarding: "self_service" | "managed";
   identityMode?: 'isolated' | 'company';
-  permissions: ("provision" | "balance" | "close" | "unlink" | "catalog" | "commercial")[];
+  permissions: ("provision" | "balance" | "close" | "unlink" | "catalog" | "commercial" | "bundles")[];
 };
 export function parseCredentials(raw: string): ServiceCredential[] {
   let values: unknown;
@@ -27,11 +28,11 @@ export function parseCredentials(raw: string): ServiceCredential[] {
         typeof c.issuer !== "string" || !/^[A-Za-z0-9:/._-]{1,100}$/.test(c.issuer) ||
         !["self_service", "managed"].includes(c.onboarding) || !Array.isArray(c.permissions) ||
         ![undefined, 'isolated', 'company'].includes(c.identityMode) ||
-        !c.permissions.length || c.permissions.some(p => !["provision", "balance", "close", "unlink", "catalog", "commercial"].includes(p))) throw new Error("Invalid service credential");
+        !c.permissions.length || c.permissions.some(p => !["provision", "balance", "close", "unlink", "catalog", "commercial", "bundles"].includes(p))) throw new Error("Invalid service credential");
     if (c.identityMode === 'company' && (c.onboarding !== 'self_service' ||
         c.permissions.includes('close') && c.application !== 'company-identity' ||
         c.application === 'company-identity' && c.permissions.some(p => p !== 'close'))) throw new Error('Company closure belongs to the identity authority');
-    if (c.identityMode !== 'company' && (c.permissions.includes('unlink') || c.permissions.includes('commercial') || c.application === 'company-identity')) throw new Error('Company permission requires company identity mode');
+    if (c.identityMode !== 'company' && (c.permissions.includes('unlink') || c.permissions.includes('commercial') || c.permissions.includes('bundles') || c.application === 'company-identity')) throw new Error('Company permission requires company identity mode');
     seen.add(c.token);
   }
   // Credential rotation may change tokens/permissions, never identity ownership.
@@ -114,6 +115,7 @@ export async function buildPrivateApp(db: Database, supplied: ServiceCredential[
   });
   registerPricingRoutes(app, db, pricingOperators, credentials);
   registerCommercialRoutes(app,db,credentials);
+  registerBundleRoutes(app,db,credentials);
   await registerCompanyRoutes(app, db, credentials, platformOperators, platformOperatorFile, pricingOperators.map(item => item.token));
   await app.ready();
   return app;

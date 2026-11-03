@@ -593,6 +593,47 @@ MIGRATIONS.push({name:'000017_staff_audit_events',statements:[
 ]});
 DOWN_TABLES.unshift('staff_audit_events');
 
+// Additive bundle rule and aggregate purchase history; existing per-app grants remain authoritative.
+MIGRATIONS.push({name:'000017_company_bundles',statements:[
+ `CREATE TABLE IF NOT EXISTS bundle_rules (
+ rule_key CHAR(64) CHARACTER SET ascii COLLATE ascii_bin PRIMARY KEY,
+ revision INT UNSIGNED NOT NULL DEFAULT 0, published_version_id CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NULL
+ ) ENGINE=InnoDB`,
+ `CREATE TABLE IF NOT EXISTS bundle_rule_versions (
+ id CHAR(36) CHARACTER SET ascii COLLATE ascii_bin PRIMARY KEY,
+ rule_key CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+ revision INT UNSIGNED NOT NULL,payload JSON NOT NULL,created_by VARCHAR(64) NOT NULL,
+ created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+ UNIQUE KEY bundle_rule_revision(rule_key,revision),FOREIGN KEY(rule_key) REFERENCES bundle_rules(rule_key)
+ ) ENGINE=InnoDB`,
+ `CREATE TABLE IF NOT EXISTS bundle_quotes (
+ id CHAR(36) CHARACTER SET ascii COLLATE ascii_bin PRIMARY KEY,
+ issuer VARCHAR(100) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+ subject VARCHAR(191) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+ snapshot JSON NOT NULL,expires_at BIGINT UNSIGNED NOT NULL,
+ created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+ FOREIGN KEY(issuer,subject) REFERENCES customer_external_identities(issuer,subject),INDEX bundle_quote_subject(issuer,subject)
+ ) ENGINE=InnoDB`,
+ `CREATE TABLE IF NOT EXISTS bundle_quote_items (
+ bundle_quote_id CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+ application VARCHAR(100) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+ quote_id CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL UNIQUE,
+ list_amount_minor DECIMAL(16,0) UNSIGNED NOT NULL,discount_minor DECIMAL(16,0) UNSIGNED NOT NULL,
+ amount_minor DECIMAL(16,0) UNSIGNED NOT NULL,
+ PRIMARY KEY(bundle_quote_id,application),FOREIGN KEY(bundle_quote_id) REFERENCES bundle_quotes(id),
+ FOREIGN KEY(quote_id) REFERENCES commercial_quotes(id),
+ CONSTRAINT bundle_line_money CHECK(amount_minor>0 AND list_amount_minor=discount_minor+amount_minor)
+ ) ENGINE=InnoDB`,
+ `CREATE TABLE IF NOT EXISTS bundle_payments (
+ quote_id CHAR(36) CHARACTER SET ascii COLLATE ascii_bin PRIMARY KEY,
+ provider VARCHAR(40) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+ payment_id VARCHAR(160) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+ status ENUM('active','refunded') NOT NULL,
+ FOREIGN KEY(quote_id) REFERENCES bundle_quotes(id),UNIQUE KEY bundle_provider_payment(provider,payment_id)
+ ) ENGINE=InnoDB`
+]});
+DOWN_TABLES.unshift('bundle_payments','bundle_quote_items','bundle_quotes','bundle_rule_versions','bundle_rules');
+
 const MIGRATION_NAMES = MIGRATIONS.map((migration) => migration.name);
 
 function mysqlConfig() {
