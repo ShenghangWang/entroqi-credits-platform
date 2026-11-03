@@ -35,7 +35,7 @@ export async function registerCompanyRoutes(app: FastifyInstance, db: Database, 
     if (Object.keys(request.query as object).length) return reply.code(400).send({ error: 'bad_request' });
   } }, (request, reply) => execute(() => registry.application(bearer(request, credentials)!.application), reply));
   if (!operators.length) return;
-  registerBackOfficeRoutes(app, db, source);
+  await registerBackOfficeRoutes(app, db, source);
   const verified = new WeakMap<FastifyRequest, PlatformOperator>();
   app.get<{ Querystring: { section?: string; cursor?: string } }>('/v1/platform/data', { onRequest: async (request, reply) => {
     let current: PlatformOperator[];

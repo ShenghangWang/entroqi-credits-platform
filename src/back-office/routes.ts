@@ -13,7 +13,7 @@ import { getCommissionPolicy } from './commission-policy.js';
 import { operatorFingerprint, StaffLoginThrottle, type OperatorSource } from './operator-source.js';
 
 const hash = (text: string) => createHash('sha256').update(text).digest();
-export function registerBackOfficeRoutes(app: FastifyInstance, db: Database, source: OperatorSource) {
+export async function registerBackOfficeRoutes(app: FastifyInstance, db: Database, source: OperatorSource) {
   const data = new BackOfficeData(db);
   const verified = new WeakMap<FastifyRequest, PlatformOperator>();
   const snapshots = new WeakMap<FastifyRequest, PlatformOperator[]>();
@@ -24,7 +24,8 @@ export function registerBackOfficeRoutes(app: FastifyInstance, db: Database, sou
   const agentsEnabled = process.env.CREDITS_AGENT_WORKFLOWS_ENABLED === 'true';
   const directory = process.env.CREDITS_CONSOLE_DIRECTORY ? resolve(process.env.CREDITS_CONSOLE_DIRECTORY) : '';
   let consoleAssets:ConsoleAssets|undefined;
-  app.addHook('onReady',async()=>{if(directory)try{consoleAssets=await loadConsoleAssets(directory);}catch{consoleAssets=undefined;}});
+  // Await construction directly, before registering any request handlers.
+  if(directory)try{consoleAssets=await loadConsoleAssets(directory);}catch{consoleAssets=undefined;}
   const common = { 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer', 'X-Content-Type-Options': 'nosniff', 'Content-Security-Policy': "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; font-src 'self' data:; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'" };
   const wrap = (value: unknown) => ({ code: 0, message: 'ok', data: value, requestId: randomBytes(8).toString('hex') });
   const authenticate = async (request: FastifyRequest) => {
