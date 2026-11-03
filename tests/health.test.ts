@@ -66,4 +66,17 @@ describe("health routes", () => {
       }
     });
   });
+
+  it("serves the original documentation UI, schema and script with patched traversal dependencies", async () => {
+    const html = await app.inject({ method: "GET", url: "/docs/" });
+    expect(html.statusCode).toBe(200);
+    expect(html.body).toContain("swagger-ui-bundle.js");
+    const schema = await app.inject({ method: "GET", url: "/docs/json" });
+    expect(schema.statusCode).toBe(200);
+    expect(schema.json()).toMatchObject({ info: { title: "Reusable Credits Platform API" } });
+    const script = await app.inject({ method: "GET", url: "/docs/static/swagger-ui-bundle.js" });
+    expect(script.statusCode).toBe(200);
+    expect(script.headers["content-type"]).toMatch(/javascript/);
+    expect(script.body).toContain("SwaggerUIBundle");
+  });
 });
