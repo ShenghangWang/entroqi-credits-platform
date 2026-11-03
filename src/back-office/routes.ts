@@ -1,7 +1,7 @@
 import {backOfficeFeatures} from './capabilities.js';
 import { randomBytes, createHash, timingSafeEqual } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
-import { resolve, join } from 'node:path';
+import { resolve } from 'node:path';
+import {loadConsoleAssets,type ConsoleAssets} from './console-assets.js';
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type { Database } from '../db/pool.js';
 import type { PlatformOperator } from '../company/routes.js';
@@ -23,6 +23,8 @@ export function registerBackOfficeRoutes(app: FastifyInstance, db: Database, sou
   const sessionDuration = 30 * 60 * 1000;
   const agentsEnabled = process.env.CREDITS_AGENT_WORKFLOWS_ENABLED === 'true';
   const directory = process.env.CREDITS_CONSOLE_DIRECTORY ? resolve(process.env.CREDITS_CONSOLE_DIRECTORY) : '';
+  let consoleAssets:ConsoleAssets|undefined;
+  app.addHook('onReady',async()=>{if(directory)try{consoleAssets=await loadConsoleAssets(directory);}catch{consoleAssets=undefined;}});
   const common = { 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer', 'X-Content-Type-Options': 'nosniff', 'Content-Security-Policy': "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; font-src 'self' data:; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'" };
   const wrap = (value: unknown) => ({ code: 0, message: 'ok', data: value, requestId: randomBytes(8).toString('hex') });
   const authenticate = async (request: FastifyRequest) => {
@@ -49,18 +51,16 @@ export function registerBackOfficeRoutes(app: FastifyInstance, db: Database, sou
   };
   const shell = async (_request: FastifyRequest, reply: FastifyReply) => {
     reply.headers(common);
-    if (!directory) return reply.code(503).send({ error: 'Build and configure the reused full Credits console' });
-    try { return reply.type('text/html; charset=utf-8').send(await readFile(join(directory, 'index.html'))); }
-    catch { return reply.code(503).send({ error: 'Full Credits console build unavailable' }); }
+    if (!consoleAssets) return reply.code(503).send({ error: 'Build and configure the reused full Credits console' });
+    return reply.type('text/html; charset=utf-8').send(consoleAssets.html);
   };
   app.get('/', (_request, reply) => reply.redirect('/back-office'));
   app.get('/v1/platform', (_request, reply) => reply.redirect('/back-office'));
   app.get('/back-office/owners',shell); app.get('/back-office', shell); app.get('/back-office/pricing', shell);
   app.get('/v1/pricing',(_request,reply)=>reply.redirect('/back-office/pricing'));  app.get('/back-office/login', shell); app.get('/back-office/recovery', shell);
   app.get<{ Params: { file: string } }>('/console/assets/:file', async (request, reply) => {
-    if (!directory || !/^[A-Za-z0-9_.-]+\.(js|css|svg|woff2?)$/.test(request.params.file)) return reply.code(404).send();
-    try { const content = await readFile(join(directory, 'assets', request.params.file)); return reply.headers(common).type(request.params.file.endsWith('.js') ? 'application/javascript' : request.params.file.endsWith('.css') ? 'text/css' : 'application/octet-stream').send(content); }
-    catch { return reply.code(404).send(); }
+    const content=consoleAssets?.files.get(request.params.file);if(!content)return reply.code(404).send();
+    return reply.headers(common).type(request.params.file.endsWith('.js') ? 'application/javascript' : request.params.file.endsWith('.css') ? 'text/css' : 'application/octet-stream').send(content);
   });
   app.post<{ Body: { username?: string; password?: string } }>('/api/v1/auth/login', { bodyLimit: 2048 }, async (request, reply) => {
     reply.headers(common);

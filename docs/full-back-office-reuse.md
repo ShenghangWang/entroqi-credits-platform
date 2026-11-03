@@ -8,6 +8,8 @@ The original `BackOfficeLayout.vue`, `credits-admin/index.vue`, login, dashboard
 
 Keep Vue, ECharts, Naive UI, Pinia and Iconify. Pin and audit dependencies; adapt compatible security fixes without replacing these components. Bundle the existing icons locally. Serve the production build via `CREDITS_CONSOLE_DIRECTORY`, behind the same private service. `/back-office` is the real console; earlier `/v1/platform` URLs redirect there. No simplified replacement shell remains the default.
 
+The private adapter validates a compiled-build snapshot before listening: regular files only, no symlink files/directories, at most128asset entries,256KiB HTML,4MiB per asset and16MiB aggregate. Browser URLs select exact in-memory assets, never filesystem paths. An invalid build leaves the console unavailable; the private finance API remains separate. Restart the service after publishing a new build. This reuses the existing interface and Node file primitives; see the [security review](verification/dependency-review-2026-11-04.md).
+
 ## Identity and optional agents
 
 The console's operator login exchanges a dedicated configured staff credential for a short-lived HttpOnly/SameSite session. It is a private staff control plane, not another customer signup or password database. Browser storage never receives long-lived product/identity/operator credentials. Staff roles are server-resolved; only explicitly scoped staff can browse the company data.
