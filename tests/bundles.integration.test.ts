@@ -132,3 +132,27 @@ it('bounds outstanding quotes per company identity while permitting exact retrie
  expect(await bundle().quote(who(),selected(),p.fingerprint,key)).toEqual(first);
  expect((await db.query('select count(*) n from bundle_quotes')).rows[0]!.n).toBe(20);
 });
+it('allows each provider receipt to fund one purchase across single-app and bundle sales in either order',async()=>{
+ await setup();const special=await publish(2,1,'200.00',0),p=await bundle().preview(selected());
+ for(const order of ['bundle-first','single-first']){
+  const a=await customer(),b=await customer(),q=await bundle().quote(a(),selected(),p.fingerprint,randomUUID()),single=await service().quote(b(2),'current',special.id,randomUUID()),proof=bundlePayment(q),singleProof=payment(single,{provider:proof.provider,paymentId:proof.paymentId});
+  expect(proof.amountMinor).toBe(singleProof.amountMinor);
+  if(order==='bundle-first'){await bundleWriter().apply(proof);await expect(writer().apply(singleProof)).rejects.toThrow(/receipt/);expect((await service().access(b(2),'current')).entitled).toBe(false);}
+  else{await writer().apply(singleProof);await expect(bundleWriter().apply(proof)).rejects.toThrow(/receipt/);expect((await service().access(a(),'current')).entitled).toBe(false);}
+ }
+});
+it('reads newly published prices and rule versions even after a transaction has an older MySQL snapshot',async()=>{
+ await setup();await publishRule();let ready!:()=>void,release!:()=>void;const started=new Promise<void>(r=>{ready=r}),hold=new Promise<void>(r=>{release=r});
+ const stale:Database={...db,withTransaction:fn=>db.withTransaction(async c=>{await c.query('select count(*) n from pricing_versions');ready();await hold;return fn(c)})};
+ const pending=new BundleService(stale,()=>now).preview(selected());await started;
+ try{await publish(0,1,'150.00',0);await publishRule(rule({discountBps:2000}));}finally{release()}
+ const result=await pending;expect(result.subtotalMinor).toBe('25000');expect(result.discountBps).toBe(2000);expect(result.amountMinor).toBe('20000');
+});
+it('refuses overlapping settlement even when a previous consistent read predates another payment',async()=>{
+ const who=await setup(),p=await bundle().preview(selected()),a=await bundle().quote(who(),selected(),p.fingerprint,randomUUID()),b=await bundle().quote(who(),selected(),p.fingerprint,randomUUID());
+ let ready!:()=>void,release!:()=>void;const started=new Promise<void>(r=>{ready=r}),hold=new Promise<void>(r=>{release=r});
+ const stale:Database={...db,withTransaction:fn=>db.withTransaction(async c=>{await c.query('select count(*) n from commercial_subscription_terms');ready();await hold;return fn(c)})};
+ const waiting=new VerifiedBundleSettlementWriter(stale,e=>Promise.resolve(e as VerifiedSettlement)).apply(bundlePayment(b));await started;
+ try{await bundleWriter().apply(bundlePayment(a));}finally{release()}
+ await expect(waiting).rejects.toThrow(/overlap/);expect((await db.query('select count(*) n from commercial_subscription_terms')).rows[0]!.n).toBe(2);
+});

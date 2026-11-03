@@ -7,7 +7,7 @@ import {PricingCatalog,type DraftPrice} from './catalog.js';
 import {SubscriptionCatalog} from './subscription-catalog.js';
 import {planDefinition} from './subscription-terms.js';
 import {reviewCostScenario} from './cost-calculator.js';
-import {CommercialService,VerifiedSettlementWriter,active,type CommercialPrincipal,type QuoteSnapshot,type VerifiedSettlement} from './commercial-service.js';
+import {CommercialService,VerifiedSettlementWriter,active,claimVerifiedPayment,type CommercialPrincipal,type QuoteSnapshot,type VerifiedSettlement} from './commercial-service.js';
 import {selection,bundleKey,allocateDiscount,decode,action,finish,type BundleRule} from './bundle-rules.js';
 const money=(minor:string)=>{const n=BigInt(minor);return `${n/100n}.${String(n%100n).padStart(2,'0')}`;};
 export interface BundleSelection {applications:string[];intervalMonths:number}
@@ -17,17 +17,17 @@ export class BundleService {
  private async review(c:DatabaseClient,input:BundleSelection){
   const chosen=selection(input.applications,input.intervalMonths),key=bundleKey(chosen);
   const head=(await c.query<{published_version_id:string|null}>('select published_version_id from bundle_rules where rule_key=$1 for update',[key])).rows[0];
-  const version=head?.published_version_id?(await c.query<{payload:string|BundleRule}>('select payload from bundle_rule_versions where id=$1 and rule_key=$2',[head.published_version_id,key])).rows[0]:null;
+  const version=head?.published_version_id?(await c.query<{payload:string|BundleRule}>('select payload from bundle_rule_versions where id=$1 and rule_key=$2 for share',[head.published_version_id,key])).rows[0]:null;
   const rule=version?decode(version.payload):null,applied=!!rule?.available&&rule.validUntil>this.now();
   const components:Array<{application:string;name:string;offer:Awaited<ReturnType<PricingCatalog['offer']>>;draft:DraftPrice}>=[];
   for(const application of chosen.applications){
-   await new CompanyRegistry({...this.db,query:c.query.bind(c)}).application(application);
+   await new CompanyRegistry({...this.db,query:(sql,values)=>c.query(sql+' for share',values)}).application(application);
    const registered=companyApplications.find(a=>a.application===application)!;
    const plan=planDefinition(registered.priceProductCode,chosen.intervalMonths);
    await c.query('select published_price_id from pricing_products where product_code=$1 for update',[plan.planCode]);
-   const catalog=new PricingCatalog({...this.db,query:c.query.bind(c)},this.now),offer=await catalog.offer(plan.planCode);
+   const catalog=new PricingCatalog({...this.db,query:c.query.bind(c)},this.now,true),offer=await catalog.offer(plan.planCode);
    if(offer.terms?.schemaVersion!==2||!offer.terms.available||offer.terms.intervalMonths!==chosen.intervalMonths)throw new ConflictError('A selected subscription period is unavailable');
-   const payload=(await c.query<{payload:string|DraftPrice}>('select payload from pricing_versions where id=$1',[offer.priceVersionId])).rows[0]!;
+   const payload=(await c.query<{payload:string|DraftPrice}>('select payload from pricing_versions where id=$1 for share',[offer.priceVersionId])).rows[0]!;
    components.push({application,name:registered.name,offer,draft:decode(payload.payload)});
   }
   const allocation=allocateDiscount(components.map(c=>({application:c.application,amountMinor:c.offer.amountMinor})),applied?rule.discountBps:0);
@@ -76,6 +76,8 @@ export class VerifiedBundleSettlementWriter {
    const replay=await action(c,'bundle-settlement',createHash('sha256').update(proof.provider+':'+proof.eventId).digest('hex').slice(0,32).replace(/(.{8})(.{4})(.{4})(.{4})(.{12})/,'$1-$2-$3-$4-$5'),proof);if(replay)return replay;
    const row=(await c.query<{snapshot:string|BundleQuote}>('select snapshot from bundle_quotes where id=$1 for update',[proof.quoteId])).rows[0];if(!row)throw new NotFoundError('Bundle quote unavailable');
    const q=decode(row.snapshot);
+   const historical=await c.query('select id from commercial_grants where provider=$1 and payment_id=$2',[proof.provider,proof.paymentId]);if(historical.rows.length)throw new ConflictError('Payment receipt belongs to an existing single-app purchase');
+   await claimVerifiedPayment(c,proof,'bundle');
    if(q.amountMinor!==proof.amountMinor||proof.paidAt<q.createdAt||proof.paidAt>=q.expiresAt||proof.periodStart!==q.periodStart||proof.periodEnd!==q.periodEnd)throw new ConflictError('Aggregate settlement does not match accepted bundle');
    const customer=(await c.query<{status:string}>('select u.status from customer_external_identities e join users u on u.id=e.user_id where e.issuer=$1 and e.subject=$2 for update',[q.issuer,q.subject])).rows[0];
    if(!customer||customer.status!=='active'&&proof.state==='paid')throw new ConflictError('Company account is closed');

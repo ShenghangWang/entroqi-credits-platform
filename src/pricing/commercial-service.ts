@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash,randomUUID } from 'node:crypto';
 import type { Database, DatabaseClient } from '../db/pool.js';
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '../domain/errors.js';
 import { requestHash } from '../http/request-hash.js';
@@ -30,7 +30,7 @@ export class CommercialService {
   const slots=codes.map((_,i)=>'$'+(i+1)).join(',');
   const head=(await client.query<{product_code:string}>(`select product_code from pricing_products where product_code in (${slots}) and published_price_id=$5 for update`,[...codes,expected])).rows[0];
   if(!head)throw new ConflictError('Offer changed or plan removed; review current subscriptions');
-  const offer=await new PricingCatalog({...this.db,query:client.query.bind(client)},this.now).offer(head.product_code),terms=validateSubscriptionTerms(offer.terms);
+  const offer=await new PricingCatalog({...this.db,query:client.query.bind(client)},this.now,true).offer(head.product_code),terms=validateSubscriptionTerms(offer.terms);
   if(subscriptionPlan(head.product_code)?.months!==terms.intervalMonths)throw new ConflictError('Stored subscription period mismatch');
   if(!terms.available||!offer.eligibleForSale||offer.validUntil<=this.now())throw new ConflictError('Subscription is withdrawn or current cost review is not ready');
   return {...offer,terms,base};
@@ -67,8 +67,8 @@ export class CommercialService {
    if(previous.request_hash!==hash)throw new ConflictError('Quote key belongs to another request');if(previous.response)return json(previous.response);
    const offer=await this.current(client,who,expectedPriceVersion);
    // Paid renewals queue after purchased coverage, retaining its calendar anchor.
-   const paid=(await client.query<{period_end:number;calendar_anchor_day:number}>(`select s.period_end,s.calendar_anchor_day from commercial_subscription_terms s join commercial_grants g on g.id=s.grant_id where s.application=$1 and s.issuer=$2 and s.subject=$3 and g.status='active' and s.period_end>$4 order by s.period_end desc limit 1`,[who.application,who.issuer,who.subject,this.now()])).rows[0];
-   const legacy=(await client.query<{snapshot:string|GrantSnapshot}>(`select g.snapshot from commercial_grants g join commercial_quotes q on q.id=g.quote_id where q.application=$1 and q.issuer=$2 and q.subject=$3 and g.status='active' and JSON_UNQUOTE(JSON_EXTRACT(g.snapshot,'$.terms.model'))='monthly' and cast(JSON_UNQUOTE(JSON_EXTRACT(g.snapshot,'$.periodEnd')) as unsigned)>$4 order by cast(JSON_UNQUOTE(JSON_EXTRACT(g.snapshot,'$.periodEnd')) as unsigned) desc limit 1`,[who.application,who.issuer,who.subject,this.now()])).rows[0];
+   const paid=(await client.query<{period_end:number;calendar_anchor_day:number}>(`select s.period_end,s.calendar_anchor_day from commercial_subscription_terms s join commercial_grants g on g.id=s.grant_id where s.application=$1 and s.issuer=$2 and s.subject=$3 and g.status='active' and s.period_end>$4 order by s.period_end desc limit 1 for update`,[who.application,who.issuer,who.subject,this.now()])).rows[0];
+   const legacy=(await client.query<{snapshot:string|GrantSnapshot}>(`select g.snapshot from commercial_grants g join commercial_quotes q on q.id=g.quote_id where q.application=$1 and q.issuer=$2 and q.subject=$3 and g.status='active' and JSON_UNQUOTE(JSON_EXTRACT(g.snapshot,'$.terms.model'))='monthly' and cast(JSON_UNQUOTE(JSON_EXTRACT(g.snapshot,'$.periodEnd')) as unsigned)>$4 order by cast(JSON_UNQUOTE(JSON_EXTRACT(g.snapshot,'$.periodEnd')) as unsigned) desc limit 1 for update`,[who.application,who.issuer,who.subject,this.now()])).rows[0];
    const old=legacy?json(legacy.snapshot):null;
    const periodStart=Math.max(this.now(),Number(paid?.period_end??0),old?.periodEnd??0);
    const calendarAnchorDay=paid&&periodStart===Number(paid.period_end)?Number(paid.calendar_anchor_day):old&&periodStart===old.periodEnd?new Date(old.periodStart!).getUTCDate():new Date(periodStart).getUTCDate();
@@ -92,6 +92,15 @@ export class CommercialService {
  }
 }
 export interface VerifiedSettlement {provider:string;eventId:string;paymentId:string;quoteId:string;state:'paid'|'refunded';amountMinor:string;currency:'CNY';paidAt:number;periodStart:number|null;periodEnd:number|null}
+/** One provider receipt funds exactly one purchase, across single and aggregate sales.
+ * Reuse the existing transactional action-lock store; internal bundle line IDs are not receipts.
+ */
+export async function claimVerifiedPayment(client:DatabaseClient,proof:VerifiedSettlement,kind:'single'|'bundle'){
+ const actor='receipt-'+proof.provider,hex=createHash('sha256').update(proof.paymentId).digest('hex').slice(0,32),key=hex.replace(/(.{8})(.{4})(.{4})(.{4})(.{12})/,'$1-$2-$3-$4-$5'),hash=requestHash({quoteId:proof.quoteId,kind});
+ await client.query('insert into pricing_actions(actor_id,idempotency_key,request_hash,response) values($1,$2,$3,NULL) on duplicate key update actor_id=actor_id',[actor,key,hash]);
+ const row=(await client.query<{request_hash:string}>('select request_hash from pricing_actions where actor_id=$1 and idempotency_key=$2 for update',[actor,key])).rows[0]!;
+ if(row.request_hash!==hash)throw new ConflictError('Payment receipt belongs to another purchase');
+}
 /** Trusted provider verification only; no public grant endpoint/default verifier. */
 export class VerifiedSettlementWriter {
  constructor(private db:Database,private verify:(event:unknown)=>Promise<VerifiedSettlement>){}
@@ -111,6 +120,7 @@ export class VerifiedSettlementWriter {
    const row=(await client.query<{snapshot:string|QuoteSnapshot}>('select snapshot from commercial_quotes where id=$1 for update',[proof.quoteId])).rows[0];if(!row)throw new NotFoundError('Payment quote unavailable');
    const quote=json(row.snapshot);
    if(quote.bundleQuoteId!==bundleQuoteId)throw new ForbiddenError('Bundle lines require atomic aggregate settlement');
+   if(!bundleQuoteId)await claimVerifiedPayment(client,proof,'single');
    await client.query('select issuer from customer_external_identities where issuer=$1 and subject=$2 for update',[quote.issuer,quote.subject]);
    if(quote.amountMinor!==proof.amountMinor||proof.paidAt<quote.createdAt||proof.paidAt>=quote.expiresAt)throw new ConflictError('Settlement does not match the accepted quote');
    const found=(await client.query<{id:string;quote_id:string;provider:string;payment_id:string;status:string}>('select id,quote_id,provider,payment_id,status from commercial_grants where quote_id=$1 or (provider=$2 and payment_id=$3) for update',[proof.quoteId,proof.provider,proof.paymentId])).rows;
@@ -121,7 +131,7 @@ export class VerifiedSettlementWriter {
     const terms=validateSubscriptionTerms(quote.terms);
     if(!Number.isSafeInteger(quote.periodStart)||!Number.isSafeInteger(quote.periodEnd)||proof.periodStart!==quote.periodStart||proof.periodEnd!==quote.periodEnd||calendarPeriodEnd(quote.periodStart!,terms.intervalMonths,quote.calendarAnchorDay)!==quote.periodEnd)throw new BadRequestError('Payment coverage must match the accepted calendar period');
     if(!current&&proof.state==='paid'){
-     const overlap=await client.query(`select s.grant_id from commercial_subscription_terms s join commercial_grants g on g.id=s.grant_id where s.application=$1 and s.issuer=$2 and s.subject=$3 and g.status='active' and s.period_start<$4 and $5<s.period_end limit 1`,[quote.application,quote.issuer,quote.subject,quote.periodEnd,quote.periodStart]);
+     const overlap=await client.query(`select s.grant_id from commercial_subscription_terms s join commercial_grants g on g.id=s.grant_id where s.application=$1 and s.issuer=$2 and s.subject=$3 and g.status='active' and s.period_start<$4 and $5<s.period_end limit 1 for update`,[quote.application,quote.issuer,quote.subject,quote.periodEnd,quote.periodStart]);
      if(overlap.rows.length)throw new ConflictError('Purchased coverage overlaps; reconciliation required');
     }
    }

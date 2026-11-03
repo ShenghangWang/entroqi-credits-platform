@@ -16,7 +16,7 @@ const json = <T>(value: string | T): T => typeof value === "string" ? JSON.parse
 const code = (value: string) => /^[a-z0-9-]{1,48}:[a-z0-9-]{1,80}$/.test(value);
 export const pricingApplication = (productCode: string) => productCode.split(":")[0]!;
 export class PricingCatalog {
-  constructor(private db: Database, private now: () => number = Date.now) {}
+  constructor(private db: Database, private now: () => number = Date.now, private currentReads=false) {}
   private async replay(client: DatabaseClient, actor: string, key: string, hash: string) {
     await client.query("insert into pricing_actions (actor_id,idempotency_key,request_hash,response) values ($1,$2,$3,NULL) on duplicate key update actor_id=actor_id", [actor, key, hash]);
     const result = await client.query<{ request_hash: string; response: string | Record<string, unknown> | null }>("select request_hash,response from pricing_actions where actor_id=$1 and idempotency_key=$2 for update", [actor, key]);
@@ -89,7 +89,7 @@ export class PricingCatalog {
   }
   async published(productCode: string) {
     if (!code(productCode)) throw new BadRequestError("Invalid product code");
-    const result = await this.db.query<VersionRow>("select v.id,v.product_code,v.revision,v.payload from pricing_products p join pricing_versions v on v.id=p.published_price_id and v.product_code=p.product_code where p.product_code=$1", [productCode]);
+    const result = await this.db.query<VersionRow>("select v.id,v.product_code,v.revision,v.payload from pricing_products p join pricing_versions v on v.id=p.published_price_id and v.product_code=p.product_code where p.product_code=$1"+(this.currentReads?" for share":""), [productCode]);
     const row = result.rows[0]; if (!row) throw new NotFoundError("Published price unavailable");
     const payload = json(row.payload), assessment = reviewCostScenario(payload.scenario, row.id, payload.validUntil, this.now());
     return { schemaVersion: 1, productCode, priceVersionId: row.id, revision: Number(row.revision), label: payload.label, billingType: payload.billingType, unit: payload.unit,
@@ -97,7 +97,7 @@ export class PricingCatalog {
   }
   async offer(productCode: string) {
     const published=await this.published(productCode);
-    const row=(await this.db.query<VersionRow>('select id,product_code,revision,payload from pricing_versions where id=$1 and product_code=$2',[published.priceVersionId,productCode])).rows[0];
+    const row=(await this.db.query<VersionRow>('select id,product_code,revision,payload from pricing_versions where id=$1 and product_code=$2'+(this.currentReads?' for share':''),[published.priceVersionId,productCode])).rows[0];
     if(!row)throw new NotFoundError('Published offer unavailable');
     const payload=json(row.payload);
     const terms=payload.terms ? validateOfferTerms(payload.terms,payload.billingType) : null;
