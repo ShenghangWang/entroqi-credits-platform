@@ -45,13 +45,20 @@ jobs:
         with:
           node-version: '24.19.0'
           cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            back-office/package-lock.json
       - run: npm ci --ignore-scripts
+      - run: npm run install:console
       - run: npm audit --omit=dev --json > production-dependency-audit.json
+      - run: npm --prefix back-office audit --omit=dev --json > console-production-dependency-audit.json
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         if: always()
         with:
           name: production-dependency-audit
-          path: production-dependency-audit.json
+          path: |
+            production-dependency-audit.json
+            console-production-dependency-audit.json
           retention-days: 7
           if-no-files-found: error
       - run: npm run typecheck && npm run lint && npm test && npm run build
@@ -64,16 +71,19 @@ jobs:
         env:
           MYSQL_ROOT_PASSWORD: root_test_only
           CREDITS_SERVICE_CREDENTIALS: '[{"token":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","application":"simulation","issuer":"simulation-v1","onboarding":"self_service","permissions":["provision","balance"]}]'
-      - name: Verify staff-session pricing and margin browser API contract
+      - name: Verify original pricing and owner console with staff sessions
         timeout-minutes: 4
         run: |
           bash scripts/install-ci-browser.sh
-          npm run verify:pricing-contract
+          npm run verify:pricing-ui -- --console-directory back-office/dist
+          npm run verify:owners-ui -- --console-directory back-office/dist
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         if: always()
         with:
           name: pricing-console-evidence
-          path: artifacts-pricing/
+          path: |
+            artifacts-pricing/
+            artifacts-owners/
           retention-days: 7
           if-no-files-found: warn
       - run: docker build -t entroqi-credits:test .

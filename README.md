@@ -1,6 +1,6 @@
 # Entroqi Credits Platform
 
-Current company entry: [source and original policy map](docs/current-state-and-policy-map.md), [subscription/bundle readiness](docs/first-web-release-readiness.md) and [original-console reuse](docs/full-back-office-reuse.md). The current standalone code preserves the earlier policy work; the old host-app Phase8 plan is historical. The original Vue console remains a private component at `ShenghangWang/entroqi-credits-back-office`; never copy it or private product source into this public repository. Compatible source versions are pinned by the private Simulation company's manifest.
+Current company entry: [source and original policy map](docs/current-state-and-policy-map.md), [subscription/bundle readiness](docs/first-web-release-readiness.md) and [original-console reuse](docs/full-back-office-reuse.md). The current standalone code preserves the earlier policy work; the old host-app Phase8 plan is historical. The original Vue console is maintained in [`back-office/`](back-office/README.md), with its complete original Git history preserved. This is the single source home for the Credits backend and frontend. The former console repository is retained as an archived provenance copy after integration. Simulation’s private company manifest pins one Credits commit for both pieces; private Simulation/Atlas source stays outside this public repository.
 
 Company setup (29 October 2026): [integration plan and ownership review](docs/company-integration-plan.md). Use a clean Entroqi database, run `npm run db:migrate` then `npm run company:register`. This registers `simulation`, `atlas-simulation` and `atlas-ai` as separate products under one company identity. The two Atlases have independent catalog/access/price keys. Registration never imports historical employer users or creates credits, purchases or entitlements. Former-employer fixture seeds are retired from company commands and refuse non-test execution.
 
@@ -20,7 +20,9 @@ The standalone entry point exposes authenticated zero-balance customer provision
 
 See [deployment](docs/deployment.md) and [implementation specification](docs/tasks/B02-B03-private-identity.md). The company identity authority owns login/passwords/verification; Simulation is its first client. Billing stores immutable issuer/subject mappings, scoped membership and wallets. No email-based account merging, agent requirement, default credits, copied operational data or atlas implementation.
 
-Checks: `npm ci --ignore-scripts`, `npm run typecheck`, `npm run lint`, `npm test`, `npm run build`. Isolated MySQL: `npm run db:migrate`, then `npm run test:integration` for every database suite. CI runs these, a production dependency audit and Docker packaging. Development/CI uses Node 24.19.0; the container is independently built in CI.
+Checks: `npm ci --ignore-scripts`, `npm run install:console`, `npm run typecheck`, `npm run lint`, `npm test`, `npm run build`. Isolated MySQL: `npm run db:migrate`, then `npm run test:integration` for every database suite. CI runs these, a production dependency audit and Docker packaging. Development/CI uses Node 24.19.0; the container is independently built in CI.
+
+`npm run build` checks/builds both the service and original Vue console using their existing separate lockfiles. For local console use, set `CREDITS_CONSOLE_DIRECTORY` to the absolute `back-office/dist` directory; the Docker image includes that build.
 
 For local start configure MYSQL_* and CREDITS_SERVICE_CREDENTIALS as described in deployment instructions, migrate, then `npm run dev`. Do not start the legacy app builder as a public service.
 
