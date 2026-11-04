@@ -1,0 +1,94 @@
+{
+  "authorization": "Owner explicitly requested reuse of their original full Credits console on 2026-10-29",
+  "source": "/Users/shenghangwang/Desktop/Codex/usedCarPlatform",
+  "files": [
+    {
+      "file": "src/pages/credits-admin/index.vue",
+      "originalSHA256": "7dbe95cad22f59d2824ac57703a12effcfca3f3aa1634fc2f719c24aa20a34b6"
+    },
+    {
+      "file": "src/pages/back-office-login/index.vue",
+      "originalSHA256": "355719775d398b0dfdd2f93f71c3e545ead1c526f66765bef8bf0a15ccec1952"
+    },
+    {
+      "file": "src/layouts/BackOfficeLayout.vue",
+      "originalSHA256": "e977c6a9d01339c602ec95896e118b0e57d6cc6d7fa95a690f152856deaec865"
+    },
+    {
+      "file": "src/components/business/credits-admin/DeveloperHomeDashboard.vue",
+      "originalSHA256": "009d8d57568ad7262d4ac7cc455bddc27643bd7f552450b570782863e02960d8"
+    },
+    {
+      "file": "src/policies/accountProvisioning.ts",
+      "originalSHA256": "a4f35891e8d69e6b8c0f926238cb22dc0099c66029a47b67ba1b2f8307433b57"
+    },
+    {
+      "file": "src/types/auth.ts",
+      "originalSHA256": "d735ee644a7f8f7f6fa037f69c3103dbeeebbf2c593935dc1dd5c6ade0e879a1"
+    },
+    {
+      "file": "src/types/subscription.ts",
+      "originalSHA256": "f8c4df4faea555e1589363c4862bbde2809a40b0e2184f7fcc719aab8c77606e"
+    },
+    {
+      "file": "src/api/http.ts",
+      "originalSHA256": "e5322fe40694f2160e5ed8a42579ec96816cbe3e3c7391e238a8a806ee8fa948"
+    }
+  ],
+  "apiClient": {
+    "source": "src/api/visual-workbench.ts",
+    "originalSHA256": "d35a134942d75579825fa4e8ad767505fb78269e4a3c77661d26894d8a34c0f0",
+    "selectedExports": [
+      "AgentCustomerLedger",
+      "AgentCustomerLedgerTransaction",
+      "AgentOperationsCommissionPreview",
+      "AgentOperationsCustomer",
+      "AgentOperationsOverview",
+      "AgentOperationsSettlementBill",
+      "AgentOperationsTopUpTransaction",
+      "AgentTransactionsLedger",
+      "CommissionPolicy",
+      "CreditsAdminOverview",
+      "CreditsCustomerProfile",
+      "CreditsTransaction",
+      "PlatformAdminPolicyOverride",
+      "PlatformAgentPolicyOverride",
+      "PlatformAgentProfile",
+      "PlatformDashboard",
+      "PlatformSettlementApplication",
+      "PlatformSubscriptionPlan",
+      "PlatformTransactionsLedger",
+      "PlatformUserPlanCode",
+      "PlatformUserTargetRole",
+      "adjustPlatformAgentDeposit",
+      "adjustPlatformCredits",
+      "applyAgentSettlement",
+      "approvePlatformSettlementPayment",
+      "connectPlatformUserApplication",
+      "createPlatformUser",
+      "deletePlatformUser",
+      "disablePlatformAgent",
+      "getAgentCustomerLedger",
+      "getAgentOperationsOverview",
+      "getAgentTransactionsLedger",
+      "getCommissionPolicy",
+      "getCreditsAdminOverview",
+      "getPlatformAdminPolicyOverrides",
+      "getPlatformAgentPolicyOverrides",
+      "getPlatformAgents",
+      "getPlatformCustomerLedger",
+      "getPlatformDashboard",
+      "getPlatformSettlementApplications",
+      "getPlatformSubscriptionPlans",
+      "getPlatformTransactionsLedger",
+      "promotePlatformUserToAgent",
+      "resetPlatformUserPassword",
+      "updateAgentCustomerProfile",
+      "updateApplicationFunctionDefaultPoints",
+      "updatePlatformAdminPolicyOverride",
+      "updatePlatformAgentPolicyOverride",
+      "updatePlatformUserProfile"
+    ],
+    "note": "AST dependency closure retained original implementations and DTOs; unrelated vehicle/generation APIs excluded."
+  }
+}
