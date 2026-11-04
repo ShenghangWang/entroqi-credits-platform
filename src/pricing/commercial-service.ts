@@ -121,7 +121,10 @@ export class VerifiedSettlementWriter {
    const quote=json(row.snapshot);
    if(quote.bundleQuoteId!==bundleQuoteId)throw new ForbiddenError('Bundle lines require atomic aggregate settlement');
    if(!bundleQuoteId)await claimVerifiedPayment(client,proof,'single');
-   await client.query('select issuer from customer_external_identities where issuer=$1 and subject=$2 for update',[quote.issuer,quote.subject]);
+   // Serialize with company closure and inspect the current locked customer,
+   // as aggregate settlement already does. Retained history may still refund.
+   const customer=(await client.query<{status:string}>('select u.status from customer_external_identities e join users u on u.id=e.user_id where e.issuer=$1 and e.subject=$2 for update',[quote.issuer,quote.subject])).rows[0];
+   if(!customer||customer.status!=='active'&&proof.state==='paid')throw new ConflictError('Company account is closed');
    if(quote.amountMinor!==proof.amountMinor||proof.paidAt<quote.createdAt||proof.paidAt>=quote.expiresAt)throw new ConflictError('Settlement does not match the accepted quote');
    const found=(await client.query<{id:string;quote_id:string;provider:string;payment_id:string;status:string}>('select id,quote_id,provider,payment_id,status from commercial_grants where quote_id=$1 or (provider=$2 and payment_id=$3) for update',[proof.quoteId,proof.provider,proof.paymentId])).rows;
    if(found.some(g=>g.quote_id!==proof.quoteId||g.provider!==proof.provider||g.payment_id!==proof.paymentId))throw new ConflictError('Payment identity belongs to another purchase');

@@ -114,6 +114,25 @@ it('will not close a company account with paid subscription obligations and reta
  await expect(closeCustomer(db,who.issuer,who.subject,true)).rejects.toThrow(/paid subscription/);
  await w.apply({...proof,state:'refunded',eventId:randomUUID()});expect(await closeCustomer(db,who.issuer,who.subject,true)).toEqual({closed:true});expect((await db.query('select count(*) total from commercial_subscription_terms')).rows[0]!.total).toBe(1);
 });
+it('rejects delayed single-app payments after company closure for every app and rolls back receipt/event claims',async()=>{
+ for(let i=0;i<companyApplications.length;i++){
+  const offer=await publish(i),who=(await customer())(i),q=await service().quote(who,'current',offer.id,randomUUID()),proof=payment(q);
+  await closeCustomer(db,who.issuer,who.subject,true);
+  await expect(writer().apply(proof)).rejects.toThrow(/closed/);
+  expect((await db.query('select id from commercial_grants where quote_id=$1',[q.quoteId])).rows).toHaveLength(0);
+  expect((await db.query('select event_id from commercial_payment_events where provider=$1 and event_id=$2',[proof.provider,proof.eventId])).rows).toHaveLength(0);
+ }
+ expect((await db.query("select actor_id from pricing_actions where actor_id='receipt-verified-fixture'")).rows).toHaveLength(0);
+});
+it('keeps refunded history and event replay valid after closure without resurrecting a paid contract',async()=>{
+ const offer=await publish(),who=(await customer())(),q=await service().quote(who,'current',offer.id,randomUUID()),paid=payment(q),w=writer();
+ const original=await w.apply(paid),refund={...paid,state:'refunded' as const,eventId:randomUUID()};await w.apply(refund);
+ await closeCustomer(db,who.issuer,who.subject,true);
+ expect(await w.apply(paid)).toEqual(original);expect(await w.apply({...refund,eventId:randomUUID()})).toMatchObject({status:'refunded'});
+ await expect(w.apply({...paid,eventId:randomUUID()})).rejects.toThrow(/closed/);
+ expect((await db.query('select status from commercial_grants where quote_id=$1',[q.quoteId])).rows).toEqual([{status:'refunded'}]);
+ expect((await db.query('select grant_id from commercial_subscription_terms where grant_id=$1',[(original as {grantId:string}).grantId])).rows).toHaveLength(1);
+});
 it('connects actual owner save/confirm/withdraw to app offers, customer contract records and original charts',async()=>{
  const app=await buildPrivateApp(db,credentials,[],[owner]),origin='http://127.0.0.1:3100',base=companyApplications[0]!.priceProductCode;
  try{

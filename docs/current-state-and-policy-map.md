@@ -1,6 +1,6 @@
 # Credits source and policy map
 
-Reviewed 4 November 2026 before repository changes. The canonical remote is `ShenghangWang/entroqi-credits-platform`; its only remote branch is main at `b061eaede76d2eb18b18149c6d5152d9299e0af0` (28 October). That commit is an ancestor of the local company-integration work. There are no missed remote PRs/branches in this inventory. Fetching and comparing history is required before editing; do not blindly pull over local work.
+Current review baseline, 4 November 2026: canonical main is `c1b2faca46924e982ee95bd8ca7ae7e92c747cdc` before the settlement correction. The historical remote inventory at the start of the earlier integration had only main `b061eaede76d2eb18b18149c6d5152d9299e0af0`; that baseline remains an ancestor. Always fetch and compare current main/branches before editing; this dated inventory does not describe future remote state. Preserve local work rather than blindly pulling over it.
 
 The older [executable plan](reusable-credits-console-executable-plan.md) is a historical reference to the original host application's Phase8 work. It is valuable policy/provenance material, not proof that every original endpoint/schema is mounted in this standalone service. Preserve it and the extracted implementation; never replace the original console or introduce another customer password authority.
 
@@ -18,6 +18,10 @@ The frontend must display actual server capabilities. A switch that merely chang
 
 ## Repository organization work
 
-The current request authorizes publishing the reviewed company work. Keep the existing public Credits core public and private Simulation/Atlas/console source private. The original Vue console currently has no remote; a private operator-console repository is a source backup/build component, not a redesigned console or another product. A private company manifest in Simulation will pin companion commits and reproducible checkout/verification commands. Never copy private Simulation/Atlas/Vue source into the public Credits tree or its Actions artifacts.
+The current request authorizes publishing the reviewed company work. Keep the existing public Credits core public and private Simulation/Atlas/console source private. The original Vue console is maintained at private `ShenghangWang/entroqi-credits-back-office`. Simulation's private `company.release.json` pins companion commits; its canonical roadmap/technical plan and existing repository runbook provide current guidance and setup/verification commands. The operator component remains the original interface. Never copy private Simulation/Atlas/Vue source into the public Credits tree or its Actions artifacts.
 
 Review/publish related checkpoints, verify exact remote SHAs and preserve historical/recovery branches. Merge only source with matching successful verification. Retain the existing full CI commands; remove duplicate automatic events rather than dropping checks. Verify actual included CI allowance privately before required runner use; paid budgets remain unchanged. A missing CI result is not release acceptance.
+
+## Settlement and company closure
+
+Single-product and aggregate verified payment settlement must read the current customer status under the same identity/user transaction locks as company closure. A delayed paid receipt cannot create rights for a closed customer. Failed settlement rolls back event and receipt claims; exact committed event retries retain their original idempotent response. Retained closed-customer history can still receive refunds, without resurrecting access. The actual MySQL regression covers all three applications and refund/replay after closure; live merchant activation remains separately qualified.
