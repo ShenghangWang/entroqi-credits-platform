@@ -6,7 +6,7 @@ The older [executable plan](reusable-credits-console-executable-plan.md) is a hi
 
 | Policy / feature | Owning implementation | Current standalone state |
 | --- | --- | --- |
-| Owner/Admin/Agent hierarchy and creation rules | `src/back-office/account-creation-policy.ts`, original private Vue policy helpers | Preserved rules. Staff-assisted creation and editable policy persistence still require the company-identity adapter; no second password store |
+| Owner/Admin/Agent hierarchy and creation rules | `src/back-office/account-creation-policy.ts`, original Vue policy helpers in `back-office/src/policies/` | Preserved rules. Staff-assisted creation and editable policy persistence still require the company-identity adapter; no second password store |
 | Staff authentication, scopes, optional agents | `operator-source.ts`, `operators.ts`, `routes.ts`, `data.ts` | Enforced on the server; agents default off and approved-subject/referral scopes remain required |
 | Independent named owners and important-action history | `staff-administration.ts`, `administration-routes.ts`, `audit-trail.ts` | Implemented with reauthentication, protected authority file/outbox, before/after pricing and bundle history |
 | Owner credential/email recovery | `owner-recovery*.ts`, protected CLI and verified mail port | Implemented preparation; private enrollment/sender and operational verification still required |
@@ -18,7 +18,7 @@ The frontend must display actual server capabilities. A switch that merely chang
 
 ## Repository organization work
 
-The current request authorizes publishing the reviewed company work. Keep the existing public Credits core public and private Simulation/Atlas/console source private. The original Vue console is maintained at private `ShenghangWang/entroqi-credits-back-office`. Simulation's private `company.release.json` pins companion commits; its canonical roadmap/technical plan and existing repository runbook provide current guidance and setup/verification commands. The operator component remains the original interface. Never copy private Simulation/Atlas/Vue source into the public Credits tree or its Actions artifacts.
+The owner’s 4 November cleanup direction makes this public repository the single Credits source home: backend at `src/`, original Vue console at `back-office/`. The complete five-commit console history through `64275f2b9f576c5a7df2ca87127e1d72ef09dc75` is imported without squashing; its starting subtree is byte-for-byte identical. Do not rerun extraction or rebuild the interface. The separate console repository is retained as an archived provenance copy after integration. Simulation’s private `company.release.json` pins one Credits commit covering both backend and console. Keep Simulation/Atlas source, operational credentials and real data private. Public console source does not make operator routes public or grant a software license.
 
 Review/publish related checkpoints, verify exact remote SHAs and preserve historical/recovery branches. Merge only source with matching successful verification. Retain the existing full CI commands; remove duplicate automatic events rather than dropping checks. Verify actual included CI allowance privately before required runner use; paid budgets remain unchanged. A missing CI result is not release acceptance.
 

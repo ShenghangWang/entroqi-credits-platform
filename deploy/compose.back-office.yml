@@ -1,10 +1,10 @@
-# Optional overlay for the owner's existing private original Vue console.
-# Build that private workspace first; credentials/state never enter the image.
+# Optional staff-state overlay for the original Vue console bundled in Credits.
+# Credentials/state never enter the image.
 services:
   credits:
     environment:
       NODE_ENV: production
-      CREDITS_CONSOLE_DIRECTORY: /opt/credits-console
+      CREDITS_CONSOLE_DIRECTORY: /app/back-office/dist
       CREDITS_CONSOLE_ORIGINS: ${CREDITS_CONSOLE_ORIGINS:?Set the exact HTTPS finance origin}
       CREDITS_PLATFORM_OPERATORS_FILE: /run/credits-staff/staff-operators.json
       CREDITS_PLATFORM_OPERATORS: '[]'
@@ -15,10 +15,6 @@ services:
       CREDITS_RECOVERY_MAIL_FROM: ${CREDITS_RECOVERY_MAIL_FROM:-}
       CREDITS_RECOVERY_MAIL_API_KEY: ${CREDITS_RECOVERY_MAIL_API_KEY:-}
     volumes:
-      - type: bind
-        source: ${CREDITS_CONSOLE_BUILD_DIRECTORY:?Set the private original console dist path}
-        target: /opt/credits-console
-        read_only: true
       # Recovery/rotation atomically replace files and append audit records.
       # Mount the owner-only directory, not a read-only individual JSON file.
       - type: bind

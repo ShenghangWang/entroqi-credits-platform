@@ -1,35 +1,34 @@
 # Original Credits back office
 
-Private operator component for the Entroqi company platform. This is the original full Vue/Naive UI/ECharts console requested by the owner, with its chart/table/dashboard structure, named owners, Admin/Agent policies and forms retained. It is not a redesigned or duplicated finance console. Original hashes and extraction provenance remain in `reuse-manifest.json`; do not rerun extraction over the maintained source.
+The original Vue/Naive UI/ECharts console is the frontend of this Credits project. Develop it here in `back-office/`; the former `ShenghangWang/entroqi-credits-back-office` repository is a provenance archive after consolidation, not a second implementation queue. Public source was explicitly authorized by the owner on 4 November 2026. Operator credentials, databases and runtime staff access remain private.
 
-The existing Credits core is public; this frontend remains private. Simulation's private `company.release.json` pins the compatible Credits, Atlas and original-console commits and supplies company checkout/verification commands. Each repository remains the owner of its implementation; the manifest adds no runtime imports or shared auth/database store.
+The complete original history through `64275f2b9f576c5a7df2ca87127e1d72ef09dc75` is retained as ancestors, without squashing. The initial imported tree exactly matches that source. Original hashes and extraction provenance remain in `reuse-manifest.json`; never rerun extraction over maintained adaptations. No UI, charts, tables, forms, roles or policy helpers are replaced.
 
 ## Build and use
 
-Use Node24.19.0 and the committed npm lockfile:
+From the Credits repository root, use Node 24.19.0 and both existing committed lockfiles:
 
 ```sh
 npm ci --ignore-scripts
+npm run install:console
 npm run build
 ```
 
-Configure the paired Credits service's `CREDITS_CONSOLE_DIRECTORY` to the absolute `dist` directory, then open `/back-office`. The service owns staff HttpOnly sessions and safe static delivery. Frontend source contains no operator credentials; configure those privately on the server. The login and administration routes load on demand, keeping chart/dashboard code out of the initial login download. Original charts still load when their page opens.
+For frontend-only iteration, run `npm run build:console` at the root or `npm run build` in this directory. Configure local `CREDITS_CONSOLE_DIRECTORY` to the absolute `back-office/dist` directory, then open `/back-office`. The container sets this path to its included build. The service owns staff HttpOnly sessions and bounded immutable static delivery. Never put credentials in source or browser storage.
 
-**定价与收费方案** reuses the exact server calculator, monthly/quarterly/yearly/two-year plans, optional trials, combination discounts and separately reviewed publication/withdrawal. **所有者与操作记录** manages independent named owners and consequential-action before/after history. No new permanent/version-license sales or live payment adapter are enabled.
+The login and administration routes load on demand; original charts load when their page opens. **定价与收费方案** reuses the server calculator, monthly/quarterly/yearly/two-year plans, optional trials, combination discounts and reviewed publication/withdrawal. **所有者与操作记录** manages independent named owners and consequential-action before/after history. No new permanent/version-license sales or live payment adapter are enabled.
 
 ## Preserved policies and actual capabilities
 
-Credits `docs/current-state-and-policy-map.md` maps the older host-app Phase8 plan to the current standalone source. Original Owner/Admin/Agent hierarchy, account-creation/commission helpers and future forms are preserved. Staff-assisted creation and policy persistence still need the company-identity/audit integration. The server advertises these as unavailable; controls remain read-only instead of suggesting that an unsaved browser-only toggle changed company policy. Ordinary users can self-register through the existing company account service. Owner creation is a separate implemented, reauthenticated/audited action. Optional agents default off and never confer purchased app access.
+[The policy map](../docs/current-state-and-policy-map.md) connects the historical host-app work to current standalone capabilities. Original Owner/Admin/Agent hierarchy, creation/commission helpers and forms remain preserved. Staff-assisted creation and editable policy persistence still require company-identity/audit integration; unavailable controls remain honestly read-only. Regular users self-register through company identity. Named-owner creation is implemented with reauthentication/audit; agents default off and confer no purchased app access.
 
-## Verification and publication
+## Verification
 
-From the paired Credits checkout, against its explicitly disposable test schema:
+Root CI builds and audits both pieces. From the Credits root, against only an explicitly disposable test schema:
 
 ```sh
-npm run verify:pricing-ui -- --console-directory /absolute/path/to/back-office/dist
-npm run verify:owners-ui
+npm run verify:pricing-ui -- --console-directory back-office/dist
+npm run verify:owners-ui -- --console-directory back-office/dist
 ```
 
-Simulation's `company:verify` builds all three companions and runs the existing real company/runtime/Atlas/Credits browser/API workflows at root and `/simulation/`. See the private root integration guide for exact source pins and required test configuration. Do not run database fixture jobs in parallel or against production.
-
-Private GitHub checks retain the frozen install, production audit and type/build checks on one automatic push event, with a bounded manual check available. Local real-service browser evidence and CI build evidence are separate. Source publication never deploys a website, changes an audience, creates a payment, or qualifies actual host/mail/AI/merchant/device operations.
+Simulation’s private `company:verify` uses the console under its pinned Credits checkout and retains the existing company/API/browser workflows at root and `/simulation/`. Do not run database fixtures in parallel or against production. Source publication does not deploy a service or qualify actual host/mail/AI/merchant/device operations.
