@@ -1,5 +1,9 @@
 # Entroqi application registration and integration
 
+## Role and current interpretation — 12 November 2026
+
+This records the original registration/ownership contract and implementation sequence, not a current rebuild queue. [The source/policy map](current-state-and-policy-map.md) owns actual mounted/retained/gated state; [first-web readiness](first-web-release-readiness.md) owns activation. App registrations, original-console consolidation, service adapters, subscriptions and bundles already have implemented portions. Preserve their identifiers/history and inspect remaining evidence instead of replaying extraction/setup or creating another auth store. The historical79CNY/permanent alternatives below are superseded for new sales by reviewed four-period subscriptions; original paid contracts remain preserved. Dated gaps/next steps below are historical context, not proof those features are absent today.
+
 Current extension, 3 November 2026: configurable multi-app subscription discounts reuse the existing console, prices, calculator and per-app access. Follow [bundle plan](bundle-pricing-plan.md); implementation and verification are separate from merchant activation.
 
 Owner direction: 29 October 2026 (Asia/Shanghai). Reviewed Credits main `b061eaed` and Atlas main `8c0bb3c8`. This plan began before implementation. Owner correction later on29October requires reuse of the original full back office; [the reuse plan](full-back-office-reuse.md) supersedes the replacement-panel implementation. The previous local demo launched a historical employer console and read its databases. That is not the company's platform and must be disconnected. Preserve that external source and financial history; never import its users, passwords, wallets, orders or transactions into Entroqi.

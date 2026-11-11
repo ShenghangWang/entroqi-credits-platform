@@ -1,42 +1,42 @@
 # Entroqi Credits Platform
 
-Current company entry: [source and original policy map](docs/current-state-and-policy-map.md), [subscription/bundle readiness](docs/first-web-release-readiness.md) and [original-console reuse](docs/full-back-office-reuse.md). The current standalone code preserves the earlier policy work; the old host-app Phase8 plan is historical. The original Vue console is maintained in [`back-office/`](back-office/README.md), with its complete original Git history preserved. This is the single source home for the Credits backend and frontend. The former console repository is retained as an archived provenance copy after integration. Simulation’s private company manifest pins one Credits commit for both pieces; private Simulation/Atlas source stays outside this public repository.
+One source home for the shared financial service and its **original Vue back office**, maintained under `back-office/` with complete imported history. The former standalone console repository is an archived provenance copy. Public source is owner-authorized; staff/service access, credentials, operational databases and private product source remain private.
 
-Company setup (29 October 2026): [integration plan and ownership review](docs/company-integration-plan.md). Use a clean Entroqi database, run `npm run db:migrate` then `npm run company:register`. This registers `simulation`, `atlas-simulation` and `atlas-ai` as separate products under one company identity. The two Atlases have independent catalog/access/price keys. Registration never imports historical employer users or creates credits, purchases or entitlements. Former-employer fixture seeds are retired from company commands and refuse non-test execution.
+Start with [AGENTS](AGENTS.md), then the [current source and policy map](docs/current-state-and-policy-map.md). Refresh actual checkout/branches/PRs before work; preserve unique progress and compare the existing implementation before interpreting an old plan as unfinished code.
 
-Configure private `CREDITS_PLATFORM_OPERATORS` and `CREDITS_CONSOLE_DIRECTORY` to reuse the original full Credits Vue/ECharts back office at `/back-office` (`/v1/platform` redirects). The original dashboards, charts, tables and optional Developer/Admin/Agent mechanisms are retained; company data comes from scoped service adapters. Operator credentials exchange for short-lived HttpOnly sessions. Regular product signup remains independent of agents, which default off. Unconfigured identity/payment/settlement mutations remain disabled. Pricing, the calculator and monthly/quarterly/yearly/two-year subscription and optional-trial controls are integrated at `/back-office/pricing`, using explicit staff pricing permissions and the same login. `/v1/pricing` redirects there; its old token-entry shell is deleted. [Setup and limits](docs/company-console.md), [owner-directed reuse](docs/full-back-office-reuse.md). Developer lockout now has a protected, audited server recovery command with automatic old-session invalidation: [recovery runbook](docs/developer-account-recovery.md). Verified owner email plus an independently stored recovery code can recover the owner credential after protected enrollment; [email recovery setup and activation](docs/owner-email-recovery.md).
+## Guiding document map
 
-Source visibility: **public by owner authorization on28 October 2026**, so standard GitHub-hosted runner time is free. The Simulation Platform repository remains private, and its source/data must never be included here. Production Credits/MySQL/operator access stays private; this is not a deployed public billing service. No open-source license or npm publication is added by changing visibility. Storage, larger-runner and usage-policy limits remain separate.
+| Question | Authority |
+| --- | --- |
+| What is implemented/mounted, retained-but-disabled, or awaiting live qualification? | [Current source/policy map and library](docs/current-state-and-policy-map.md) |
+| How do owners use pricing, trials, bundles and what blocks activation? | [First-web readiness and gates](docs/first-web-release-readiness.md) |
+| What are service boundaries and product integration rules? | [Integration contract](docs/integration-contract.md), [service boundaries](docs/architecture/service-boundaries.md) |
+| What are the existing financial contracts? | [Offers/console](docs/flexible-offers-and-console.md), [subscription calendar](docs/subscription-periods.md), [bundles](docs/bundle-pricing-plan.md), [cost floors](docs/architecture/paid-offer-margin.md) |
+| How is the original UI maintained? | [Console README](back-office/README.md), [console instructions](back-office/AGENTS.md), [reuse/provenance](docs/full-back-office-reuse.md) |
+| How do we deploy/recover/administer the service? | [Deployment](docs/deployment.md), [server credential recovery](docs/developer-account-recovery.md), [email recovery](docs/owner-email-recovery.md), [owners/audit](docs/owner-administration-and-audit.md) |
+| How is verification scoped and recorded? | [CI policy](docs/ci-policy.md), existing task specs and dated `docs/verification/` records |
 
-[28 October security review](docs/verification/public-release-security-2026-10-28.md): legacy caller-identity API/payment adapters are test-only and fail closed outside tests. Use only the authenticated private production entry point. Repaired replay/signature/configuration controls do not enable payments. See [security policy](SECURITY.md) and existing commercial gates before accepting money.
+The library labels historical host-app plans and dated implementation sequences. They preserve policy/provenance but do not independently schedule new work or prove current activation. Scope/state/commands/evidence have separate owners; update them in place rather than creating another launch queue.
 
-Current owner correction: [one company account across apps](docs/verification/company-identity-2026-10-25.md), verified on `83003ae3` with 120 unit and 29 real MySQL tests plus full build/audit/migration/Compose/Docker checks. Explicit company-mode credentials share a stable issuer/subject and financial customer/wallet; namespaces and app bindings persist. Products own lazy profiles/roles and may unlink their own membership. Only the company identity authority can close the global financial identity. Legacy isolated issuers remain supported; no automatic merge or paid enablement.
+## Existing boundaries to retain
 
-[Database/multi-app review](docs/verification/database-architecture-2026-10-25.md) and [current integration contract](docs/integration-contract.md) separate this customer API from future paid services. Products own projects/jobs; Credits owns financial state. The earlier separate-app assumption is superseded by company mode and persisted namespace registration; isolated legacy issuers retain strict separation.
+Company identity remains the sole customer signup/password authority. Credits owns scoped financial identity, wallets, immutable offers/quotes/contracts, receipts/refunds and audit. Product data/roles and app-specific paid rights remain separate. Registration never imports another organization's users/data or creates purchase proof. Use the established company registry, original console and per-product adapters; do not build another account store, wallet-based unlock or replacement console.
 
-Private standalone shared billing core. One maintained main branch; per-product onboarding policies support self-service or authorized-staff provisioning. Original unmodified extraction is preserved at commit `306fbf3d41b863e3baa07bd54c99c2abba2d78db`.
+Named owners, short-lived staff sessions, calculator, draft/review/publish/withdrawal, four subscription periods, optional trials, exact-combination discounts and attributed audit have implemented portions. Unmounted legacy policy/provisioning/agent-money controls stay unavailable. Historical signed rights remain readable; new lifetime/version-license sales and automatic renewal are not enabled. Actual merchant/provider/host/mail/restore qualification still gates live services; source publication does not collect payments.
 
-The standalone entry point exposes authenticated zero-balance customer provisioning, balance queries and permission-scoped guarded customer closure. Existing legacy ledger, payment and agent implementations remain in source for subsequent hardening; they are not mounted by this server. This is an integration foundation, not a live payment service.
+## Fresh setup and changed-code checks
 
-See [deployment](docs/deployment.md) and [implementation specification](docs/tasks/B02-B03-private-identity.md). The company identity authority owns login/passwords/verification; Simulation is its first client. Billing stores immutable issuer/subject mappings, scoped membership and wallets. No email-based account merging, agent requirement, default credits, copied operational data or atlas implementation.
+Use Node 24.19.0 and the committed backend/console locks. Inspect a qualified matching checkout before reinstalling or rebuilding it. For a fresh or relevant changed checkout:
 
-Checks: `npm ci --ignore-scripts`, `npm run install:console`, `npm run typecheck`, `npm run lint`, `npm test`, `npm run build`. Isolated MySQL: `npm run db:migrate`, then `npm run test:integration` for every database suite. CI runs these, a production dependency audit and Docker packaging. Development/CI uses Node 24.19.0; the container is independently built in CI.
+```sh
+npm ci --ignore-scripts
+npm run install:console
+npm run typecheck
+npm run lint
+npm test
+npm run build
+```
 
-`npm run build` checks/builds both the service and original Vue console using their existing separate lockfiles. For local console use, set `CREDITS_CONSOLE_DIRECTORY` to the absolute `back-office/dist` directory; the Docker image includes that build.
+`build` includes both the server and original console. Configure the absolute `back-office/dist` path via private `CREDITS_CONSOLE_DIRECTORY`; the container includes it. Real database/browser checks require the explicitly disposable setup in [deployment](docs/deployment.md) and [console verification](back-office/README.md#verification), run sequentially. Never use operational/former-employer data. Use the authenticated production entry point, not historical test-only builders.
 
-For local start configure MYSQL_* and CREDITS_SERVICE_CREDENTIALS as described in deployment instructions, migrate, then `npm run dev`. Do not start the legacy app builder as a public service.
-
-## Current finance implementation
-
-See the [30October owner workflow and release gates](docs/first-web-release-readiness.md), [offer contract](docs/flexible-offers-and-console.md) and [current verification](docs/verification/flexible-finance-2026-10-30.md). No final business price/model has been selected and no live payment adapter is enabled.
-
-## Earlier MVP review
-
-Runtime/dependency source c1f5c80b9f4bc2569bbf50e5ee7bdc7811b35fba passed [40043859238](https://github.com/ShenghangWang/entroqi-credits-platform/actions/runs/40043859238): 117 unit tests, 26 MySQL integration tests, types/lint/build, repeated migration, audit and Docker checks. Full local JavaScript audit reports zero known advisories after patched dependency/test-tool updates. This is dated registry evidence, not proof of zero defects. See the [financial review](docs/verification/billing-review-2026-10-24.md) and [margin policy](docs/architecture/paid-offer-margin.md); paid checkout/refunds/entitlements and actual host/provider operations remain gated.
-
-
-Native service/developer database defaults pass [source-bound verification](docs/verification/network-defaults-2026-10-25.md) on d9bcfe3b/run 40179536866: 118 unit tests, 26 real MySQL tests, types/lint/build, repeated migrations, clean production audit, both Compose recipes and Docker. Canonical deployment retains its explicit internal bind and host-loopback mapping. Paid services remain disabled.
-
-Development and release runs follow the [private CI cost policy](docs/ci-policy.md): local checks and batched pushes, shared allowance monitoring, protected manual full verification and no automatic spending.
-
-Named owners can now add another owner through the original console and inspect attributed price/security history at `/back-office/owners`; [owner administration and audit](docs/owner-administration-and-audit.md) covers reauthentication, persistence, verification and current integration limits.
+Guidance-only edits need documentation/preservation checks, not an unchanged full runtime rerun. Runtime, dependencies, migrations, financial policy or enabled configuration changes retain their existing full qualification. Current source/evidence and all remaining gates are in the map above; dated test counts are not refreshed by a new documentation date.

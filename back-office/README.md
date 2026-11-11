@@ -1,5 +1,7 @@
 # Original Credits back office
 
+Read the parent [AGENTS](../AGENTS.md) and [source/policy map](../docs/current-state-and-policy-map.md) before work. This README owns console build/use details, not a second status/backlog. Compare current/pending source and reuse matching dated verification before rebuilding unchanged UI for a documentation task.
+
 The original Vue/Naive UI/ECharts console is the frontend of this Credits project. Develop it here in `back-office/`; the former `ShenghangWang/entroqi-credits-back-office` repository is a provenance archive after consolidation, not a second implementation queue. Public source was explicitly authorized by the owner on 4 November 2026. Operator credentials, databases and runtime staff access remain private.
 
 The complete original history through `64275f2b9f576c5a7df2ca87127e1d72ef09dc75` is retained as ancestors, without squashing. The initial imported tree exactly matches that source. Original hashes and extraction provenance remain in `reuse-manifest.json`; never rerun extraction over maintained adaptations. No UI, charts, tables, forms, roles or policy helpers are replaced.
