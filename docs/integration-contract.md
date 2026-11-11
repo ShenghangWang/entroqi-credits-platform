@@ -1,5 +1,9 @@
 # Private product integration contract
 
+## Contract versus current implementation — 12 November 2026
+
+This is the service/data boundary reference, not a dated remaining-work queue. Read [the current source/policy map](current-state-and-policy-map.md) before interpreting earlier future catalog/order/entitlement wording: current subscription/bundle/quote/verified-settlement-port implementations already exist, while real merchant collection and applicable operating gates remain separate. Preserve the existing APIs, company identity and per-app rights; do not expose historical builders or duplicate financial/auth stores to satisfy an old gap sentence. Actual owner activation follows [first-web readiness](first-web-release-readiness.md).
+
 ## Company account mode — current owner correction
 
 The owner requires one registration across all company apps; [decision 0022](https://github.com/ShenghangWang/ai-native-simulation-platform/blob/main/docs/decisions/0022-company-identity-and-lazy-product-profiles.md) supersedes the separate-app-login/wallet paragraphs below for company clients. Configure `identityMode: "company"`, one stable issuer `entroqi-company-v1`, per-app tokens with `provision,balance,unlink`, and a separately held `application: "company-identity"` token with `close` only. Company onboarding is self-service. Namespace mode/onboarding and app/issuer bindings persist at standalone startup; reassignment requires a reviewed migration.

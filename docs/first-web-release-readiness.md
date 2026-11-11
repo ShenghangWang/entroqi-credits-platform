@@ -1,5 +1,9 @@
 # First web release: subscription finance handoff,30October2026
 
+## How to use this guide — 12 November 2026
+
+This is the owner finance-workflow and real activation-gate authority. Read [AGENTS](../AGENTS.md) and the [current source/policy map](current-state-and-policy-map.md) for implemented/retained/gated state before choosing work. Use existing contracts/specs and runbooks for bounded execution/commands; do not create another company queue or rebuild implemented subscriptions/bundles/console because merchant/host evidence is still missing. Dated verification below stays tied to its source/date and was not rerun by this documentation organization. Private cross-product coordination remains in its owning repository; no private product source/logs or operational credentials belong here.
+
 The owner selected monthly, quarterly, yearly and two-year subscriptions, removing new permanent/version-license sales. Final prices, enabled periods and trial policy remain undecided. The clean company database has three apps and no published commercial offers. The original full Credits back office is the only finance UI: `/back-office/pricing` (**定价与收费方案**). `/v1/platform` and `/v1/pricing` redirect; their obsolete panels are deleted. Optional agents remain preserved and off by default.
 
 ## Owner and manager workflow
